@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; f64arraysub.scm
-;; 2019-3-4 v1.02
+;; 2019-3-5 v1.03
 ;;
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
@@ -35,8 +35,9 @@
 
 ;; eigenmat モジュールのロード
 ;; (存在しなければ使用しない)
+;(define *disable-eigenmat* #t) ; 無効化フラグ
 (define *eigenmat-loaded*
-  (and (not (global-variable-bound? (current-module) '*disable-eigenmat*))
+  (and (not (global-variable-ref (current-module) '*disable-eigenmat* #f))
        (load "eigenmat" :error-if-not-found #f)))
 
 ;; shape の内部処理の高速化
@@ -62,7 +63,7 @@
   (- (s32vector-ref (slot-ref A 'end-vector)   dim)
      (s32vector-ref (slot-ref A 'start-vector) dim)))
 
-;; 行列の要素の参照
+;; 行列の要素の参照(2次元のみ)
 (define (f64array-ref A i j)
   (let ((is (s32vector-ref (slot-ref A 'start-vector) 0))
         (ie (s32vector-ref (slot-ref A 'end-vector)   0))
@@ -73,7 +74,7 @@
     (f64vector-ref (slot-ref A 'backing-storage)
                    (+ (* (- i is) (- je js)) (- j js)))))
 
-;; 行列の要素の設定
+;; 行列の要素の設定(2次元のみ)
 (define (f64array-set! A i j d)
   (let ((is (s32vector-ref (slot-ref A 'start-vector) 0))
         (ie (s32vector-ref (slot-ref A 'end-vector)   0))
@@ -155,7 +156,7 @@
 
 ;; == 以下では、eigenmat モジュールがあれば使用する ==
 
-;; 行列の生成
+;; 行列の生成(簡略版)(2次元のみ)
 (define make-f64array-simple
   (if *eigenmat-loaded*
     (lambda (ns ne ms me . maybe-init)
@@ -166,7 +167,7 @@
     (lambda (ns ne ms me . maybe-init)
       (apply make-f64array (shape ns ne ms me) maybe-init))))
 
-;; 行列の初期化データ付き生成
+;; 行列の初期化データ付き生成(簡略版)(2次元のみ)
 (define f64array-simple
   (if *eigenmat-loaded*
     eigen-array
@@ -246,13 +247,13 @@
        (apply (with-module gauche.array array-sub-elements) rest))
       ar)))
 
-;; 行列の積を計算
+;; 行列の積を計算(2次元のみ)
 (define f64array-mul
   (if *eigenmat-loaded*
     eigen-array-mul
     (with-module gauche.array array-mul)))
 
-;; 行列の積を計算(破壊的変更版)
+;; 行列の積を計算(破壊的変更版)(2次元のみ)
 ;; (第1引数は結果を格納するためだけに使用)
 (define f64array-mul!
   (if *eigenmat-loaded*
@@ -350,7 +351,7 @@
     eigen-array-transpose
     %array-transpose))
 
-;; 行列から行を抜き出す
+;; 行列から行を抜き出す(2次元のみ)
 (define f64array-row
   (if *eigenmat-loaded*
     eigen-array-row
@@ -369,7 +370,7 @@
             (f64vector-set! vec2 j2 (f64array-ref ar1 i1 (+ j2 js))))
           ar2)))))
 
-;; 行列から列を抜き出す
+;; 行列から列を抜き出す(2次元のみ)
 (define f64array-col
   (if *eigenmat-loaded*
     eigen-array-col

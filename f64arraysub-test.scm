@@ -55,9 +55,11 @@
 
   (test* "f64array-nearly=? 1" #t
          (f64array-nearly=? A (f64array-simple 0 2 0 2 1 2 3 4)))
-  (test* "f64array-nearly=? 2" #f
-         (f64array-nearly=? A (f64array-simple 0 2 0 2 1 2 3 (+ 4 1e-11))))
+  (test* "f64array-nearly=? 2" #t
+         (f64array-nearly=? A (f64array-simple 0 2 0 2 1 2 3 (+ 4 1e-13))))
   (test* "f64array-nearly=? 3" #f
+         (f64array-nearly=? A (f64array-simple 0 2 0 2 1 2 3 (+ 4 1e-11))))
+  (test* "f64array-nearly=? 4" #f
          (f64array-nearly=? F (f64array-simple 0 2 0 2 0 0 0 1e-13)))
 
   (test* "f64array-nearly-zero? 1" #t
@@ -95,12 +97,14 @@
     (test* "f64array-mul-elements! 1" #,(<f64array> (0 2 0 2) 1 8 27 64)
            (begin (f64array-mul-elements! A1 A A A) A1) f64array-nearly=?)
 
-    (test* "f64array-sigmoid 1"  (f64array (shape 0 2 0 2)
-                                           (sigmoid 5) (sigmoid 6) (sigmoid 7) (sigmoid 8))
+    (test* "f64array-sigmoid 1"  (f64array-simple
+                                  0 2 0 2
+                                  (sigmoid 5) (sigmoid 6) (sigmoid 7) (sigmoid 8))
            (f64array-sigmoid B) f64array-nearly=?)
 
-    (test* "f64array-sigmoid! 1" (f64array (shape 0 2 0 2)
-                                           (sigmoid 5) (sigmoid 6) (sigmoid 7) (sigmoid 8))
+    (test* "f64array-sigmoid! 1" (f64array-simple
+                                  0 2 0 2
+                                  (sigmoid 5) (sigmoid 6) (sigmoid 7) (sigmoid 8))
            (f64array-sigmoid! A1 B) f64array-nearly=?)
 
     (test* "f64array-relu 1"  #,(<f64array> (0 2 0 3) 0 0 0 1 2 3)
