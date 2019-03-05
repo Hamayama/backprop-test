@@ -61,6 +61,7 @@
   f64arraysub.scmをv1.02に更新(多数の見直し、デバッグ、テスト追加)
 - 2019-3-5   v1.03 f64arraysub.scmをv1.03に更新(コメント、テスト変更等)
 - 2019-3-5   v1.04 f64arraysub.scmをv1.04に更新(f64array-transposeの見直し)
+- 2019-3-5   v1.05 f64arraysub.scmをv1.05に更新(f64array-copyの見直し)
 
 
 (2019-3-5)

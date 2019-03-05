@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; f64arraysub.scm
-;; 2019-3-5 v1.04
+;; 2019-3-5 v1.05
 ;;
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
@@ -115,7 +115,14 @@
       (error "can't copy array")))))
 
 ;; f64array を返す array-copy (エラーチェックなし)
-(define f64array-copy array-copy)
+(define (f64array-copy A)
+  (if (eq? (class-of A) <f64array>)
+    (array-copy A)
+    (make <f64array>
+      :start-vector    (slot-ref A 'start-vector)
+      :end-vector      (slot-ref A 'end-vector)
+      :mapper          (slot-ref A 'mapper)
+      :backing-storage (coerce-to <f64vector> (slot-ref A 'backing-storage)))))
 
 ;; f64array を返す array-map (ただし shape の明示指定は不可)
 (define (f64array-map proc ar0 . rest)

@@ -43,6 +43,8 @@
 
   (test* "f64array-copy 1" A
          (f64array-copy A)  f64array-nearly=?)
+  (test* "f64array-copy 2" L
+         (f64array-copy (array (shape 0 2 0 3) -2 -1 0 1 2 3)) f64array-nearly=?)
 
   (test* "f64array-map 1"  B
          (f64array-map (lambda (d1) (+ d1 4)) A) f64array-nearly=?)
