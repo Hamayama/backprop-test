@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; f64arraysub.scm
-;; 2019-3-5 v1.03
+;; 2019-3-5 v1.04
 ;;
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
@@ -124,16 +124,27 @@
               (make-f64array (array-shape ar0)))
     (apply array-map! ar proc ar0 rest)))
 
-;; 転置行列の生成(Gauche v0.9.7 の不具合対応)
+;; 転置行列の生成(Gauche v0.9.7 の不具合対応(resの生成) + 高速化)
 (define (%array-transpose a :optional (dim1 0) (dim2 1))
   (let* ([sh (array-copy (array-shape a))]
          [rank (array-rank a)]
-         [tmp0 (array-ref sh dim1 0)]
-         [tmp1 (array-ref sh dim1 1)])
-    (array-set! sh dim1 0 (array-ref sh dim2 0))
-    (array-set! sh dim1 1 (array-ref sh dim2 1))
-    (array-set! sh dim2 0 tmp0)
-    (array-set! sh dim2 1 tmp1)
+         ;[tmp0 (array-ref sh dim1 0)]
+         ;[tmp1 (array-ref sh dim1 1)])
+         [vec  (slot-ref sh 'backing-storage)]
+         [vs1  (* dim1 2)]
+         [ve1  (+ vs1  1)]
+         [vs2  (* dim2 2)]
+         [ve2  (+ vs2  1)]
+         [tmp0 (vector-ref vec vs1)]
+         [tmp1 (vector-ref vec ve1)])
+    ;(array-set! sh dim1 0 (array-ref sh dim2 0))
+    ;(array-set! sh dim1 1 (array-ref sh dim2 1))
+    ;(array-set! sh dim2 0 tmp0)
+    ;(array-set! sh dim2 1 tmp1)
+    (vector-set! vec vs1 (vector-ref vec vs2))
+    (vector-set! vec ve1 (vector-ref vec ve2))
+    (vector-set! vec vs2 tmp0)
+    (vector-set! vec ve2 tmp1)
     ;(rlet1 res (array-copy a)
     (rlet1 res ((with-module gauche.array make-array-internal) (class-of a) sh)
       (array-for-each-index a
