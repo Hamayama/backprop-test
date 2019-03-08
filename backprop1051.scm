@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1051.scm
-;; 2019-3-4 v1.00
+;; 2019-3-8 v1.10
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -58,17 +58,17 @@
 
 ;; 中間層クラス
 (define-class <middle-layer> ()
-  ((w      :init-value #f) ; 重み          (行列(1x3))
-   (b      :init-value #f) ; バイアス      (行列(1x3))
-   (x      :init-value #f) ; 入力          (行列(1x1))
-   (y      :init-value #f) ; 出力          (行列(1x3))
-   (grad-w :init-value #f) ; 重みの勾配    (行列(1x3))
-   (grad-b :init-value #f) ; バイアスの勾配(行列(1x3))
-   (grad-x :init-value #f) ; 入力の勾配    (行列(1x1))
-   (u      :init-value #f) ; 計算用
-   (delta  :init-value #f) ; 計算用
-   (w0     :init-value #f) ; 計算用
-   (b0     :init-value #f) ; 計算用
+  ((w      :init-value #f) ; 重み          (行列(n-upper x n))
+   (b      :init-value #f) ; バイアス      (行列(1 x n))
+   (x      :init-value #f) ; 入力          (行列(1 x n-upper))
+   (y      :init-value #f) ; 出力          (行列(1 x n))
+   (grad-w :init-value #f) ; 重みの勾配    (行列(サイズはwと同じ))
+   (grad-b :init-value #f) ; バイアスの勾配(行列(サイズはbと同じ))
+   (grad-x :init-value #f) ; 入力の勾配    (行列(サイズはxと同じ))
+   (u      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
+   (delta  :init-value #f) ; 計算用        (行列(サイズはyと同じ))
+   (w0     :init-value #f) ; 計算用        (行列(サイズはwと同じ))
+   (b0     :init-value #f) ; 計算用        (行列(サイズはbと同じ))
    ))
 (define (middle-layer-init ml n-upper n)
   (slot-set! ml 'w (apply f64array-simple
@@ -81,13 +81,13 @@
                                (generator->list gen-normal n))))
   (slot-set! ml 'x      (make-f64array-simple 0 1 0 n-upper))
   (slot-set! ml 'y      (make-f64array-simple 0 1 0 n))
-  (slot-set! ml 'grad-w (make-f64array-simple 0 n-upper 0 n))
-  (slot-set! ml 'grad-b (make-f64array-simple 0 1 0 n))
-  (slot-set! ml 'grad-x (make-f64array-simple 0 1 0 n-upper))
-  (slot-set! ml 'u      (make-f64array-simple 0 1 0 n))
-  (slot-set! ml 'delta  (make-f64array-simple 0 1 0 n))
-  (slot-set! ml 'w0     (make-f64array-simple 0 n-upper 0 n))
-  (slot-set! ml 'b0     (make-f64array-simple 0 1 0 n))
+  (slot-set! ml 'grad-w (make-f64array-same-shape (slot-ref ml 'w)))
+  (slot-set! ml 'grad-b (make-f64array-same-shape (slot-ref ml 'b)))
+  (slot-set! ml 'grad-x (make-f64array-same-shape (slot-ref ml 'x)))
+  (slot-set! ml 'u      (make-f64array-same-shape (slot-ref ml 'y)))
+  (slot-set! ml 'delta  (make-f64array-same-shape (slot-ref ml 'y)))
+  (slot-set! ml 'w0     (make-f64array-same-shape (slot-ref ml 'w)))
+  (slot-set! ml 'b0     (make-f64array-same-shape (slot-ref ml 'b)))
   )
 (define (middle-layer-forward ml x)
   (slot-set! ml 'x x)
@@ -128,18 +128,18 @@
 
 ;; 出力層クラス
 (define-class <output-layer> ()
-  ((w      :init-value #f) ; 重み          (行列(3x1))
-   (b      :init-value #f) ; バイアス      (行列(1x1))
-   (x      :init-value #f) ; 入力          (行列(1x3))
-   (y      :init-value #f) ; 出力          (行列(1x1))
-   (grad-w :init-value #f) ; 重みの勾配    (行列(3x1))
-   (grad-b :init-value #f) ; バイアスの勾配(行列(1x1))
-   (grad-x :init-value #f) ; 入力の勾配    (行列(1x3))
-   (u      :init-value #f) ; 計算用
-   (delta  :init-value #f) ; 計算用
-   (w0     :init-value #f) ; 計算用
-   (b0     :init-value #f) ; 計算用
-   (t      :init-value #f) ; 計算用
+  ((w      :init-value #f) ; 重み          (行列(n-upper x n))
+   (b      :init-value #f) ; バイアス      (行列(1 x n))
+   (x      :init-value #f) ; 入力          (行列(1 x n-upper))
+   (y      :init-value #f) ; 出力          (行列(1 x n))
+   (grad-w :init-value #f) ; 重みの勾配    (行列(サイズはwと同じ))
+   (grad-b :init-value #f) ; バイアスの勾配(行列(サイズはbと同じ))
+   (grad-x :init-value #f) ; 入力の勾配    (行列(サイズはxと同じ))
+   (u      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
+   (delta  :init-value #f) ; 計算用        (行列(サイズはyと同じ))
+   (w0     :init-value #f) ; 計算用        (行列(サイズはwと同じ))
+   (b0     :init-value #f) ; 計算用        (行列(サイズはbと同じ))
+   (t      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    ))
 (define (output-layer-init ol n-upper n)
   (slot-set! ol 'w (apply f64array-simple
@@ -152,14 +152,14 @@
                                (generator->list gen-normal n))))
   (slot-set! ol 'x      (make-f64array-simple 0 1 0 n-upper))
   (slot-set! ol 'y      (make-f64array-simple 0 1 0 n))
-  (slot-set! ol 'grad-w (make-f64array-simple 0 n-upper 0 n))
-  (slot-set! ol 'grad-b (make-f64array-simple 0 1 0 n))
-  (slot-set! ol 'grad-x (make-f64array-simple 0 1 0 n-upper))
-  (slot-set! ol 'u      (make-f64array-simple 0 1 0 n))
-  (slot-set! ol 'delta  (make-f64array-simple 0 1 0 n))
-  (slot-set! ol 'w0     (make-f64array-simple 0 n-upper 0 n))
-  (slot-set! ol 'b0     (make-f64array-simple 0 1 0 n))
-  (slot-set! ol 't      (make-f64array-simple 0 1 0 n))
+  (slot-set! ol 'grad-w (make-f64array-same-shape (slot-ref ol 'w)))
+  (slot-set! ol 'grad-b (make-f64array-same-shape (slot-ref ol 'b)))
+  (slot-set! ol 'grad-x (make-f64array-same-shape (slot-ref ol 'x)))
+  (slot-set! ol 'u      (make-f64array-same-shape (slot-ref ol 'y)))
+  (slot-set! ol 'delta  (make-f64array-same-shape (slot-ref ol 'y)))
+  (slot-set! ol 'w0     (make-f64array-same-shape (slot-ref ol 'w)))
+  (slot-set! ol 'b0     (make-f64array-same-shape (slot-ref ol 'b)))
+  (slot-set! ol 't      (make-f64array-same-shape (slot-ref ol 'y)))
   )
 (define (output-layer-forward ol x)
   (slot-set! ol 'x x)

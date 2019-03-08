@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; f64arraysub.scm
-;; 2019-3-5 v1.05
+;; 2019-3-8 v1.10
 ;;
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
@@ -19,7 +19,8 @@
   (export
     f64array-ref          f64array-set!
     f64array-copy         f64array-map
-    make-f64array-simple  f64array-simple
+    make-f64array-simple  make-f64array-same-shape
+    f64array-simple
     f64array-nearly=?     f64array-nearly-zero?
     f64array-add-elements f64array-add-elements!
     f64array-sub-elements f64array-sub-elements!
@@ -184,6 +185,27 @@
                            (car maybe-init)))))
     (lambda (ns ne ms me . maybe-init)
       (apply make-f64array (shape ns ne ms me) maybe-init))))
+
+;; 行列の生成(簡略版)(2次元のみ)
+(define make-f64array-same-shape
+  (if *eigenmat-loaded*
+    (lambda (A . maybe-init)
+      (check-array-rank A)
+      (let ((ns (array-start A 0))
+            (ne (array-end   A 0))
+            (ms (array-start A 1))
+            (me (array-end   A 1)))
+        (rlet1 ar (eigen-make-array ns ne ms me)
+          (unless (null? maybe-init)
+            (f64vector-fill! (slot-ref ar 'backing-storage)
+                             (car maybe-init))))))
+    (lambda (A . maybe-init)
+      (check-array-rank A)
+      (let ((ns (array-start A 0))
+            (ne (array-end   A 0))
+            (ms (array-start A 1))
+            (me (array-end   A 1)))
+        (apply make-f64array (shape ns ne ms me) maybe-init)))))
 
 ;; 行列の初期化データ付き生成(簡略版)(2次元のみ)
 (define f64array-simple
