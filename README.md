@@ -39,6 +39,10 @@
   - backprop1051.scm  
     backprop1001.scm で、行列の破壊的変更を行うようにしたものです。
 
+  - backprop1061.scm  
+    backprop1051.scm で、学習する関数を sin(x) * sin(2 * x) に変更したものです。  
+    また、中間層の数を設定可能にしました。
+
 
 ## 注意事項
 1. 同梱の f64arraysub.scm を読み込んで使用するため、同一フォルダに置いてください。  
@@ -64,6 +68,8 @@
 - 2019-3-5   v1.05 f64arraysub.scmをv1.05に更新(f64array-copyの見直し)
 - 2019-3-8   v1.10 コメント変更等  
   f64arraysub.scmをv1.10に更新(make-f64array-same-shapeを追加)
+- 2019-3-9   v1.11 backprop1061.scm を追加。その他、コメント追加等  
+  f64arraysub.scmをv1.11に更新(コメント、テスト追加)
 
 
-(2019-3-8)
+(2019-3-9)

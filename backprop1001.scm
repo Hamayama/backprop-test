@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1001.scm
-;; 2019-3-8 v1.10
+;; 2019-3-9 v1.11
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -75,7 +75,7 @@
 (define (middle-layer-forward ml x)
   (slot-set! ml 'x x)
   (let1 u (f64array-add-elements (f64array-mul x (slot-ref ml 'w)) (slot-ref ml 'b))
-    (slot-set! ml 'y (f64array-sigmoid u)))) ; シグモイド関数 ( 1/(1+exp(-u) )
+    (slot-set! ml 'y (f64array-sigmoid u)))) ; シグモイド関数 ( 1/(1+exp(-u)) )
 (define (middle-layer-backward ml grad-y)
   (let1 delta (f64array-mul-elements         ; シグモイド関数の微分 ( grad-y*(1-y)*y )
                grad-y
@@ -162,7 +162,8 @@
           (when (= (modulo i interval) 0)
             (set! y (f64array-ref (slot-ref ol 'y) 0 0))
             (inc! total-error (* 0.5 (- y t) (- y t)))
-            (push! result (cons x y)))))
+            (push! result (cons x y)))
+          ))
       ;; 結果の表示
       (when (= (modulo i interval) 0)
         ;(print (sort result < car))

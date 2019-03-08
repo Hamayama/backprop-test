@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; f64arraysub.scm
-;; 2019-3-8 v1.10
+;; 2019-3-9 v1.11
 ;;
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
@@ -186,7 +186,7 @@
     (lambda (ns ne ms me . maybe-init)
       (apply make-f64array (shape ns ne ms me) maybe-init))))
 
-;; 行列の生成(簡略版)(2次元のみ)
+;; 同じ shape の行列の生成(簡略版)(2次元のみ)
 (define make-f64array-same-shape
   (if *eigenmat-loaded*
     (lambda (A . maybe-init)

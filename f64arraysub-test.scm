@@ -52,6 +52,9 @@
   (test* "make-f64array-simple 1" F
          (make-f64array-simple 0 2 0 2) f64array-nearly=?)
 
+  (test* "make-f64array-same-shape 1" F
+         (make-f64array-same-shape A) f64array-nearly=?)
+
   (test* "f64array-simple 1" A
          (f64array-simple 0 2 0 2 1 2 3 4) f64array-nearly=?)
 

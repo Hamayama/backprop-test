@@ -1,6 +1,6 @@
 ;; -*- coding: utf-8 -*-
 ;;
-;; backprop1051.scm
+;; backprop1061.scm
 ;; 2019-3-9 v1.11
 ;;
 ;; ＜内容＞
@@ -13,10 +13,10 @@
 ;;   https://github.com/Hamayama/backprop-test
 ;;
 ;; ＜流用ベース＞
-;;   backprop1001.scm
+;;   backprop1051.scm
 ;;
 ;; ＜変更点＞
-;;   行列の破壊的変更版
+;;   学習する関数を sin(x) * sin(2 * x) に変更。また、中間層の数を設定可能にした
 ;;
 (add-load-path "." :relative)
 (use gauche.sequence)  ; shuffle
@@ -35,10 +35,12 @@
 (define gen-normal (reals-normal$))
 
 
-(define outfile        "backprop_result1051.txt") ; 出力ファイル名
+(define outfile        "backprop_result1061.txt") ; 出力ファイル名
 
 (define input-data-0   (lrange 0 2pi 0.1))      ; 入力(リスト)
-(define correct-data-0 (map %sin input-data-0)) ; 正解(リスト)
+(define correct-data-0 (map                     ; 正解(リスト)
+                        (lambda (x1) (+ (%sin x1) (%sin (* 2 x1))))
+                        input-data-0))
 (define n-data         (length input-data-0))   ; データ数
 
 (define input-data     (apply f64array-simple   ; 入力(行列(1 x n-data))
@@ -50,12 +52,14 @@
                               correct-data-0))
 
 (define n-in           1)    ; 入力層のニューロン数
-(define n-mid          3)    ; 中間層のニューロン数
+(define n-mid          30)   ; 中間層のニューロン数
 (define n-out          1)    ; 出力層のニューロン数
+
+(define ml-num         2)    ; 中間層の数
 
 (define wb-width       0.01) ; 重みとバイアスの幅
 (define eta            0.1)  ; 学習係数
-(define epoch          2001) ; エポック数
+(define epoch          4001) ; エポック数
 (define interval       200)  ; 経過の表示間隔
 
 
@@ -195,11 +199,17 @@
 
 ;; メイン処理
 (define (main args)
-  (define ml (make <middle-layer>))
-  (define ol (make <output-layer>))
+  (define mls     (vector-tabulate ml-num (lambda (ml) (make <middle-layer>))))
+  (define mls-rev (list->vector (reverse (vector->list mls))))
+  (define ol      (make <output-layer>))
 
   ;; 各層の初期化
-  (middle-layer-init ml n-in  n-mid)
+  (for-each-with-index
+   (lambda (i ml)
+     (if (= i 0)
+       (middle-layer-init ml n-in  n-mid)
+       (middle-layer-init ml n-mid n-mid)))
+   mls)
   (output-layer-init ol n-mid n-out)
 
   ;; 学習
@@ -212,16 +222,26 @@
               (t (f64array-ref correct-data 0 idx))
               (y #f))
           ;; 順伝播
-          (f64array-set! (slot-ref ml 'x) 0 0 x)
-          (middle-layer-forward  ml (slot-ref ml 'x))
-          (output-layer-forward  ol (slot-ref ml 'y))
+          (f64array-set! (slot-ref (vector-ref mls 0) 'x) 0 0 x)
+          (for-each-with-index
+           (lambda (i ml)
+             (if (= i 0)
+               (middle-layer-forward  ml (slot-ref (vector-ref mls 0) 'x))
+               (middle-layer-forward  ml (slot-ref (vector-ref mls (- i 1)) 'y))))
+           mls)
+          (output-layer-forward  ol (slot-ref (vector-ref mls (- ml-num 1)) 'y))
           ;; 逆伝播 (ouput -> middle の順なので注意)
           (f64array-set! (slot-ref ol 't) 0 0 t)
           (output-layer-backward ol (slot-ref ol 't))
-          (middle-layer-backward ml (slot-ref ol 'grad-x))
+          (for-each-with-index
+           (lambda (i ml)
+             (if (= i 0)
+               (middle-layer-backward  ml (slot-ref ol 'grad-x))
+               (middle-layer-backward  ml (slot-ref (vector-ref mls (- ml-num i)) 'grad-x))))
+           mls-rev)
           ;; 重みとバイアスの更新
-          (middle-layer-update   ml eta)
-          (output-layer-update   ol eta)
+          (for-each (lambda (ml) (middle-layer-update ml eta)) mls)
+          (output-layer-update ol eta)
           ;; 結果の収集
           (when (= (modulo i interval) 0)
             (set! y (f64array-ref (slot-ref ol 'y) 0 0))

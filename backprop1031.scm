@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1031.scm
-;; 2019-3-8 v1.10
+;; 2019-3-9 v1.11
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -11,6 +11,9 @@
 ;;
 ;;   詳細については、以下のページを参照ください。
 ;;   https://github.com/Hamayama/backprop-test
+;;
+;; ＜流用ベース＞
+;;   backprop1001.scm
 ;;
 ;; ＜変更点＞
 ;;   活性化関数を ReLU 関数にし、中間層の数を1増やした。
@@ -168,7 +171,8 @@
           (when (= (modulo i interval) 0)
             (set! y (f64array-ref (slot-ref ol 'y) 0 0))
             (inc! total-error (* 0.5 (- y t) (- y t)))
-            (push! result (cons x y)))))
+            (push! result (cons x y)))
+          ))
       ;; 結果の表示
       (when (= (modulo i interval) 0)
         ;(print (sort result < car))
