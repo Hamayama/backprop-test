@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1031.scm
-;; 2019-3-9 v1.11
+;; 2019-3-9 v1.12
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -186,6 +186,14 @@
              (lambda (r) (print (car r) "\t" (cdr r)))
              (sort result < car)))))
       ))
+
+  ;; 最終パラメータの表示
+  ;(print "ml1.w = "(slot-ref ml1 'w))
+  ;(print "ml1.b = "(slot-ref ml1 'b))
+  ;(print "ml2.w = "(slot-ref ml2 'w))
+  ;(print "ml2.b = "(slot-ref ml2 'b))
+  ;(print "ol.w  = "(slot-ref ol  'w))
+  ;(print "ol.b  = "(slot-ref ol  'b))
 
   0)
 

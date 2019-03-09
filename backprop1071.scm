@@ -1,6 +1,6 @@
 ;; -*- coding: utf-8 -*-
 ;;
-;; backprop1061.scm
+;; backprop1071.scm
 ;; 2019-3-9 v1.12
 ;;
 ;; ＜内容＞
@@ -16,7 +16,7 @@
 ;;   backprop1051.scm
 ;;
 ;; ＜変更点＞
-;;   学習する関数を sin(x) + sin(2 * x) にした。また、中間層の数を設定可能にした
+;;   学習する関数を max(0, sin(x) + sin(2 * x)) にした。また、中間層の数と活性化関数を設定可能にした
 ;;
 (add-load-path "." :relative)
 (use gauche.sequence)  ; shuffle
@@ -35,11 +35,11 @@
 (define gen-normal (reals-normal$))
 
 
-(define outfile        "backprop_result1061.txt") ; 出力ファイル名
+(define outfile        "backprop_result1071.txt") ; 出力ファイル名
 
 (define input-data-0   (lrange 0 2pi 0.1))      ; 入力(リスト)
 (define correct-data-0 (map                     ; 正解(リスト)
-                        (lambda (x1) (+ (%sin x1) (%sin (* 2 x1))))
+                        (lambda (x1) (max 0 (+ (%sin x1) (%sin (* 2 x1)))))
                         input-data-0))
 (define n-data         (length input-data-0))   ; データ数
 
@@ -51,16 +51,17 @@
                               0 1 0 n-data
                               correct-data-0))
 
-(define n-in           1)    ; 入力層のニューロン数
-(define n-mid          30)   ; 中間層のニューロン数
-(define n-out          1)    ; 出力層のニューロン数
+(define n-in           1)     ; 入力層のニューロン数
+(define n-mid          50)    ; 中間層のニューロン数
+(define n-out          1)     ; 出力層のニューロン数
 
-(define ml-num         2)    ; 中間層の数
+(define ml-num         2)     ; 中間層の数
+(define ml-func        'relu) ; 中間層の活性化関数(sigmoid / relu)
 
-(define wb-width       0.01) ; 重みとバイアスの幅
-(define eta            0.1)  ; 学習係数
-(define epoch          4001) ; エポック数
-(define interval       200)  ; 経過の表示間隔
+(define wb-width       0.01)  ; 重みとバイアスの幅
+(define eta            0.1)   ; 学習係数
+(define epoch          5001)  ; エポック数
+(define interval       200)   ; 経過の表示間隔
 
 
 ;; 中間層クラス
@@ -102,19 +103,30 @@
                     (slot-ref ml 'u)
                     (f64array-mul! (slot-ref ml 'u) x (slot-ref ml 'w))
                     (slot-ref ml 'b)))
-  (slot-set! ml 'y (f64array-sigmoid!           ; シグモイド関数 ( 1/(1+exp(-u)) )
-                    (slot-ref ml 'y)
-                    (slot-ref ml 'u)))
+  (slot-set! ml 'y
+             (if (eq? ml-func 'sigmoid)
+               (f64array-sigmoid!         ; シグモイド関数 ( 1/(1+exp(-u)) )
+                (slot-ref ml 'y)
+                (slot-ref ml 'u))
+               (f64array-relu!            ; ReLU関数 ( (max 0 u) )
+                (slot-ref ml 'y)
+                (slot-ref ml 'u))))
   )
 (define (middle-layer-backward ml grad-y)
-  (slot-set! ml 'delta  (f64array-mul-elements! ; シグモイド関数の微分 ( grad-y*(1-y)*y )
-                         (slot-ref ml 'delta)
-                         (f64array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
-                         grad-y
-                         -1
-                         ;; (破壊的変更の関係で前に移動)
-                         ;(f64array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
-                         (slot-ref ml 'y)))
+  (slot-set! ml 'delta
+             (if (eq? ml-func 'sigmoid)
+               (f64array-mul-elements!    ; シグモイド関数の微分 ( grad-y*(1-y)*y )
+                (slot-ref ml 'delta)
+                (f64array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
+                grad-y
+                -1
+                ;; (破壊的変更の関係で前に移動)
+                ;(f64array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
+                (slot-ref ml 'y))
+               (f64array-mul-elements!    ; ReLU関数の微分 ( ステップ関数 )
+                (slot-ref ml 'delta)
+                grad-y
+                (f64array-step! (slot-ref ml 'delta) (slot-ref ml 'y)))))
   (slot-set! ml 'grad-w (f64array-mul!
                          (slot-ref ml 'grad-w)
                          (f64array-transpose (slot-ref ml 'x))
