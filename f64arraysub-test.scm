@@ -10,9 +10,9 @@
 (define (nearly=? x y :optional (precision 1e-12))
   (<= (abs (- x y)) precision))
 
-(test-start "eigenmat")
+(test-start "f64arraysub")
 (use f64arraysub)
-(test-module 'eigenmat)
+(test-module 'f64arraysub)
 
 (define A (f64array-simple 0 2 0 2 1 2 3 4))
 (define B (f64array-simple 0 2 0 2 5 6 7 8))
