@@ -32,13 +32,13 @@
 
   (let1 A1 (f64array-copy A)
     (test* "f64array-set! 1" 100
-          (begin (f64array-set! A1  0  0  100) (f64array-ref  A1  0  0)) nearly=?)
+           (begin (f64array-set! A1  0  0  100) (f64array-ref  A1  0  0)) nearly=?)
     (test* "f64array-set! 2" 400
-          (begin (f64array-set! A1  1  1  400) (f64array-ref  A1  1  1)) nearly=?)
+           (begin (f64array-set! A1  1  1  400) (f64array-ref  A1  1  1)) nearly=?)
     (test* "f64array-set! 3" (test-error <error>)
-          (f64array-set! A1 -1  0  100))
+           (f64array-set! A1 -1  0  100))
     (test* "f64array-set! 4" (test-error <error>)
-          (f64array-set! A1  0  3  400))
+           (f64array-set! A1  0  3  400))
     )
 
   (test* "f64array-copy 1" A
@@ -46,8 +46,18 @@
   (test* "f64array-copy 2" L
          (f64array-copy (array (shape 0 2 0 3) -2 -1 0 1 2 3)) f64array-nearly=?)
 
+  (let1 A1 (make-f64array-simple 0 2 0 2)
+    (test* "f64array-copy! 1" A
+           (begin (f64array-copy! A1 A) A1) f64array-nearly=?)
+    )
+
   (test* "f64array-map 1"  B
          (f64array-map (lambda (d1) (+ d1 4)) A) f64array-nearly=?)
+
+  (let1 A1 (make-f64array-simple 0 2 0 2)
+    (test* "f64array-map! 1"  B
+           (begin (f64array-map! A1 (lambda (d1) (+ d1 4)) A) A1) f64array-nearly=?)
+    )
 
   (test* "make-f64array-simple 1" F
          (make-f64array-simple 0 2 0 2) f64array-nearly=?)
