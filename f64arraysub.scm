@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; f64arraysub.scm
-;; 2019-3-11 v1.16
+;; 2019-3-11 v1.17
 ;;
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
@@ -111,11 +111,11 @@
      ((and (vector? v1) (vector? v2)
            (= (vector-length v1) (vector-length v2)))
       (vector-copy! v1 0 v2))
-     ((and (class-of v1) (class-of v2)
+     ((and (eq? (class-of v1) (class-of v2))
            (= (uvector-length v1) (uvector-length v2)))
       (uvector-copy! v1 0 v2))
      (else
-      (error "can't copy array")))))
+      (error "can't copy array (type or size mismatch)")))))
 
 ;; f64array を返す array-copy (エラーチェックなし)
 (define (f64array-copy A)
