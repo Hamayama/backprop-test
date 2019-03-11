@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1051.scm
-;; 2019-3-11 v1.14
+;; 2019-3-11 v1.16
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -93,8 +93,8 @@
   (slot-set! ml 'delta  (make-f64array-same-shape (slot-ref ml 'y)))
   (slot-set! ml 'w0     (make-f64array-same-shape (slot-ref ml 'w)))
   (slot-set! ml 'b0     (make-f64array-same-shape (slot-ref ml 'b)))
-  (slot-set! ml 'tx     (make-f64array-simple 0 n-upper 0 1))
-  (slot-set! ml 'tw     (make-f64array-simple 0 n 0 n-upper))
+  (slot-set! ml 'tx     (make-f64array-same-shape (f64array-transpose (slot-ref ml 'x))))
+  (slot-set! ml 'tw     (make-f64array-same-shape (f64array-transpose (slot-ref ml 'w))))
   )
 (define (middle-layer-forward ml x)
   (slot-set! ml 'x x)
@@ -168,8 +168,8 @@
   (slot-set! ol 'delta  (make-f64array-same-shape (slot-ref ol 'y)))
   (slot-set! ol 'w0     (make-f64array-same-shape (slot-ref ol 'w)))
   (slot-set! ol 'b0     (make-f64array-same-shape (slot-ref ol 'b)))
-  (slot-set! ol 'tx     (make-f64array-simple 0 n-upper 0 1))
-  (slot-set! ol 'tw     (make-f64array-simple 0 n 0 n-upper))
+  (slot-set! ol 'tx     (make-f64array-same-shape (f64array-transpose (slot-ref ol 'x))))
+  (slot-set! ol 'tw     (make-f64array-same-shape (f64array-transpose (slot-ref ol 'w))))
   (slot-set! ol 't      (make-f64array-same-shape (slot-ref ol 'y)))
   )
 (define (output-layer-forward ol x)

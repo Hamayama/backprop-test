@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; f64arraysub.scm
-;; 2019-3-11 v1.14
+;; 2019-3-11 v1.16
 ;;
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
@@ -400,6 +400,7 @@
     %array-transpose))
 
 ;; 転置行列を計算(破壊的変更版)
+;; (第1引数は結果を格納するためだけに使用)
 (define f64array-transpose!
   (if *eigenmat-loaded*
     eigen-array-transpose!
@@ -427,6 +428,7 @@
           ar2)))))
 
 ;; 行列から行を抜き出す(破壊的変更版)(2次元のみ)
+;; (第1引数は結果を格納するためだけに使用)
 (define f64array-row!
   (if *eigenmat-loaded*
     eigen-array-row!
@@ -468,6 +470,7 @@
           ar2)))))
 
 ;; 行列から列を抜き出す(破壊的変更版)(2次元のみ)
+;; (第1引数は結果を格納するためだけに使用)
 (define f64array-col!
   (if *eigenmat-loaded*
     eigen-array-col!
