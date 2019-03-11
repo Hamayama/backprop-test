@@ -81,6 +81,7 @@
 - 2019-3-9   v1.13 f64arraysub.scmをv1.13に更新(f64array-copy!,f64array-map!を追加)
 - 2019-3-11  v1.14 backprop1051/1061/1071.scmを変更(転置行列を破壊的変更で作成)  
   f64arraysub.scmをv1.14に更新(f64array-transpose!,f64array-row!,f64array-col!を追加)
+- 2019-3-11  v1.15 backprop1061/1071.scmを変更(エポック数を増やした)
 
 
 (2019-3-11)

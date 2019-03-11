@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1071.scm
-;; 2019-3-11 v1.14
+;; 2019-3-11 v1.15
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -60,7 +60,7 @@
 
 (define wb-width       0.01)  ; 重みとバイアスの幅
 (define eta            0.1)   ; 学習係数
-(define epoch          5001)  ; エポック数
+(define epoch          6001)  ; エポック数
 (define interval       200)   ; 経過の表示間隔
 
 
