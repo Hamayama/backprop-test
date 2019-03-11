@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1061.scm
-;; 2019-3-9 v1.12
+;; 2019-3-11 v1.14
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -76,6 +76,8 @@
    (delta  :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    (w0     :init-value #f) ; 計算用        (行列(サイズはwと同じ))
    (b0     :init-value #f) ; 計算用        (行列(サイズはbと同じ))
+   (tx     :init-value #f) ; 計算用        (行列(サイズはxの転置))
+   (tw     :init-value #f) ; 計算用        (行列(サイズはwの転置))
    ))
 (define (middle-layer-init ml n-upper n)
   (slot-set! ml 'w (apply f64array-simple
@@ -95,6 +97,8 @@
   (slot-set! ml 'delta  (make-f64array-same-shape (slot-ref ml 'y)))
   (slot-set! ml 'w0     (make-f64array-same-shape (slot-ref ml 'w)))
   (slot-set! ml 'b0     (make-f64array-same-shape (slot-ref ml 'b)))
+  (slot-set! ml 'tx     (make-f64array-simple 0 n-upper 0 1))
+  (slot-set! ml 'tw     (make-f64array-simple 0 n 0 n-upper))
   )
 (define (middle-layer-forward ml x)
   (slot-set! ml 'x x)
@@ -117,13 +121,13 @@
                          (slot-ref ml 'y)))
   (slot-set! ml 'grad-w (f64array-mul!
                          (slot-ref ml 'grad-w)
-                         (f64array-transpose (slot-ref ml 'x))
+                         (f64array-transpose! (slot-ref ml 'tx) (slot-ref ml 'x))
                          (slot-ref ml 'delta)))
   (slot-set! ml 'grad-b (slot-ref ml 'delta))
   (slot-set! ml 'grad-x (f64array-mul!
                          (slot-ref ml 'grad-x)
                          (slot-ref ml 'delta)
-                         (f64array-transpose (slot-ref ml 'w))))
+                         (f64array-transpose! (slot-ref ml 'tw) (slot-ref ml 'w))))
   )
 (define (middle-layer-update ml eta)
   (slot-set! ml 'w0 (f64array-mul-elements! (slot-ref ml 'w0) (slot-ref ml 'grad-w) eta))
@@ -146,6 +150,8 @@
    (delta  :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    (w0     :init-value #f) ; 計算用        (行列(サイズはwと同じ))
    (b0     :init-value #f) ; 計算用        (行列(サイズはbと同じ))
+   (tx     :init-value #f) ; 計算用        (行列(サイズはxの転置))
+   (tw     :init-value #f) ; 計算用        (行列(サイズはwの転置))
    (t      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    ))
 (define (output-layer-init ol n-upper n)
@@ -166,6 +172,8 @@
   (slot-set! ol 'delta  (make-f64array-same-shape (slot-ref ol 'y)))
   (slot-set! ol 'w0     (make-f64array-same-shape (slot-ref ol 'w)))
   (slot-set! ol 'b0     (make-f64array-same-shape (slot-ref ol 'b)))
+  (slot-set! ol 'tx     (make-f64array-simple 0 n-upper 0 1))
+  (slot-set! ol 'tw     (make-f64array-simple 0 n 0 n-upper))
   (slot-set! ol 't      (make-f64array-same-shape (slot-ref ol 'y)))
   )
 (define (output-layer-forward ol x)
@@ -181,13 +189,13 @@
   (slot-set! ol 'delta  (f64array-sub-elements! (slot-ref ol 'delta) (slot-ref ol 'y) t))
   (slot-set! ol 'grad-w (f64array-mul!
                          (slot-ref ol 'grad-w)
-                         (f64array-transpose (slot-ref ol 'x))
+                         (f64array-transpose! (slot-ref ol 'tx) (slot-ref ol 'x))
                          (slot-ref ol 'delta)))
   (slot-set! ol 'grad-b (slot-ref ol 'delta))
   (slot-set! ol 'grad-x (f64array-mul!
                          (slot-ref ol 'grad-x)
                          (slot-ref ol 'delta)
-                         (f64array-transpose (slot-ref ol 'w))))
+                         (f64array-transpose! (slot-ref ol 'tw) (slot-ref ol 'w))))
   )
 (define (output-layer-update ol eta)
   (slot-set! ol 'w0 (f64array-mul-elements! (slot-ref ol 'w0) (slot-ref ol 'grad-w) eta))
@@ -226,8 +234,8 @@
           (for-each-with-index
            (lambda (i ml)
              (if (= i 0)
-               (middle-layer-forward  ml (slot-ref (vector-ref mls 0) 'x))
-               (middle-layer-forward  ml (slot-ref (vector-ref mls (- i 1)) 'y))))
+               (middle-layer-forward ml (slot-ref (vector-ref mls 0) 'x))
+               (middle-layer-forward ml (slot-ref (vector-ref mls (- i 1)) 'y))))
            mls)
           (output-layer-forward  ol (slot-ref (vector-ref mls (- ml-num 1)) 'y))
           ;; 逆伝播 (ouput -> middle の順なので注意)
@@ -236,8 +244,8 @@
           (for-each-with-index
            (lambda (i ml)
              (if (= i 0)
-               (middle-layer-backward  ml (slot-ref ol 'grad-x))
-               (middle-layer-backward  ml (slot-ref (vector-ref mls (- ml-num i)) 'grad-x))))
+               (middle-layer-backward ml (slot-ref ol 'grad-x))
+               (middle-layer-backward ml (slot-ref (vector-ref mls (- ml-num i)) 'grad-x))))
            mls-rev)
           ;; 重みとバイアスの更新
           (for-each (lambda (ml) (middle-layer-update ml eta)) mls)

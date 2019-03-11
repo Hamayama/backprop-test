@@ -88,61 +88,70 @@
         (L1 (f64array-copy L)))
     (define (sigmoid x) (/. 1 (+ 1 (exp (- x)))))
 
-    (test* "f64array-add-elements 1"  #,(<f64array> (0 2 0 2) 3 6 9 12)
-           (f64array-add-elements A A A) f64array-nearly=?)
+    (test* "f64array-add-elements  1" #,(<f64array> (0 2 0 2) 3 6 9 12)
+           (f64array-add-elements  A A A) f64array-nearly=?)
 
     (test* "f64array-add-elements! 1" #,(<f64array> (0 2 0 2) 3 6 9 12)
            (begin (f64array-add-elements! A1 A A A) A1) f64array-nearly=?)
 
-    (test* "f64array-sub-elements 1"  #,(<f64array> (0 2 0 2) -1 -2 -3 -4)
-           (f64array-sub-elements A A A) f64array-nearly=?)
+    (test* "f64array-sub-elements  1" #,(<f64array> (0 2 0 2) -1 -2 -3 -4)
+           (f64array-sub-elements  A A A) f64array-nearly=?)
 
     (test* "f64array-sub-elements! 1" #,(<f64array> (0 2 0 2) -1 -2 -3 -4)
            (begin (f64array-sub-elements! A1 A A A) A1) f64array-nearly=?)
 
-    (test* "f64array-mul 1"  #,(<f64array> (0 2 0 2) 7 10 15 22)
-           (f64array-mul A A) f64array-nearly=?)
+    (test* "f64array-mul  1" #,(<f64array> (0 2 0 2) 7 10 15 22)
+           (f64array-mul  A A) f64array-nearly=?)
 
     (test* "f64array-mul! 1" #,(<f64array> (0 2 0 2) 7 10 15 22)
            (begin (f64array-mul! A1 A A) A1) f64array-nearly=?)
 
-    (test* "f64array-mul-elements 1"  #,(<f64array> (0 2 0 2) 1 8 27 64)
-           (f64array-mul-elements A A A) f64array-nearly=?)
+    (test* "f64array-mul-elements  1" #,(<f64array> (0 2 0 2) 1 8 27 64)
+           (f64array-mul-elements  A A A) f64array-nearly=?)
 
     (test* "f64array-mul-elements! 1" #,(<f64array> (0 2 0 2) 1 8 27 64)
            (begin (f64array-mul-elements! A1 A A A) A1) f64array-nearly=?)
 
-    (test* "f64array-sigmoid 1"  (f64array-simple
+    (test* "f64array-sigmoid  1" (f64array-simple
                                   0 2 0 2
                                   (sigmoid 5) (sigmoid 6) (sigmoid 7) (sigmoid 8))
-           (f64array-sigmoid B) f64array-nearly=?)
+           (f64array-sigmoid  B) f64array-nearly=?)
 
     (test* "f64array-sigmoid! 1" (f64array-simple
                                   0 2 0 2
                                   (sigmoid 5) (sigmoid 6) (sigmoid 7) (sigmoid 8))
            (f64array-sigmoid! A1 B) f64array-nearly=?)
 
-    (test* "f64array-relu 1"  #,(<f64array> (0 2 0 3) 0 0 0 1 2 3)
-           (f64array-relu L) f64array-nearly=?)
+    (test* "f64array-relu  1" #,(<f64array> (0 2 0 3) 0 0 0 1 2 3)
+           (f64array-relu  L) f64array-nearly=?)
 
     (test* "f64array-relu! 1" #,(<f64array> (0 2 0 3) 0 0 0 1 2 3)
            (f64array-relu! L1 L) f64array-nearly=?)
 
-    (test* "f64array-step 1"  #,(<f64array> (0 2 0 3) 0 0 0 1 1 1)
-           (f64array-step L) f64array-nearly=?)
+    (test* "f64array-step  1" #,(<f64array> (0 2 0 3) 0 0 0 1 1 1)
+           (f64array-step  L) f64array-nearly=?)
 
     (test* "f64array-step! 1" #,(<f64array> (0 2 0 3) 0 0 0 1 1 1)
            (f64array-step! L1 L) f64array-nearly=?)
     )
 
-  (test* "f64array-transpose 1" #,(<f64array> (0 3 0 2) -2 1 -1 2 0 3)
-         (f64array-transpose L) f64array-nearly=?)
+  (test* "f64array-transpose  1" #,(<f64array> (0 3 0 2) -2 1 -1 2 0 3)
+         (f64array-transpose  L) f64array-nearly=?)
 
-  (test* "f64array-row 1" #,(<f64array> (0 1 0 3) 1 2 3)
-         (f64array-row L 1) f64array-nearly=?)
+  (test* "f64array-transpose! 1" #,(<f64array> (0 3 0 2) -2 1 -1 2 0 3)
+         (f64array-transpose! (make-f64array-simple 0 3 0 2) L) f64array-nearly=?)
 
-  (test* "f64array-col 1" #,(<f64array> (0 2 0 1) 0 3)
-         (f64array-col L 2) f64array-nearly=?)
+  (test* "f64array-row  1" #,(<f64array> (0 1 0 3) 1 2 3)
+         (f64array-row  L 1) f64array-nearly=?)
+
+  (test* "f64array-row! 1" #,(<f64array> (0 1 0 3) 1 2 3)
+         (f64array-row! (make-f64array-simple 0 1 0 3) L 1) f64array-nearly=?)
+
+  (test* "f64array-col  1" #,(<f64array> (0 2 0 1) 0 3)
+         (f64array-col  L 2) f64array-nearly=?)
+
+  (test* "f64array-col! 1" #,(<f64array> (0 2 0 1) 0 3)
+         (f64array-col! (make-f64array-simple 0 2 0 1) L 2) f64array-nearly=?)
   )
 
 (test-section "use eigenmat")

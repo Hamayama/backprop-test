@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; f64arraysub.scm
-;; 2019-3-9 v1.13
+;; 2019-3-11 v1.14
 ;;
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
@@ -30,8 +30,9 @@
     f64array-sigmoid      f64array-sigmoid!
     f64array-relu         f64array-relu!
     f64array-step         f64array-step!
-    f64array-transpose
-    f64array-row          f64array-col
+    f64array-transpose    f64array-transpose!
+    f64array-row          f64array-row!
+    f64array-col          f64array-col!
     ))
 (select-module f64arraysub)
 
@@ -398,6 +399,14 @@
     eigen-array-transpose
     %array-transpose))
 
+;; 転置行列を計算(破壊的変更版)
+(define f64array-transpose!
+  (if *eigenmat-loaded*
+    eigen-array-transpose!
+    (lambda (ar2 ar1)
+      (f64array-copy! ar2 (%array-transpose ar1))
+      ar2)))
+
 ;; 行列から行を抜き出す(2次元のみ)
 (define f64array-row
   (if *eigenmat-loaded*
@@ -411,11 +420,33 @@
             (js (array-start  ar1 1)))
         (unless (and (>= i1 is) (< i1 ie))
           (error "invalid index value"))
-        (let* ((ar2  (make-f64array (shape 0 1 0 m1)))
+        (let* ((ar2  (make-f64array (shape 0 1 0 m1))) ; 結果は 1 x m1 になる
                (vec2 (slot-ref ar2 'backing-storage)))
           (dotimes (j2 m1)
             (f64vector-set! vec2 j2 (f64array-ref ar1 i1 (+ j2 js))))
           ar2)))))
+
+;; 行列から行を抜き出す(破壊的変更版)(2次元のみ)
+(define f64array-row!
+  (if *eigenmat-loaded*
+    eigen-array-row!
+    (lambda (ar2 ar1 i1)
+      (check-array-rank ar1 ar2)
+      (let ((n1   (array-length ar1 0))
+            (m1   (array-length ar1 1))
+            (is   (array-start  ar1 0))
+            (ie   (array-end    ar1 0))
+            (js   (array-start  ar1 1))
+            (n2   (array-length ar2 0))
+            (m2   (array-length ar2 1))
+            (vec2 (slot-ref ar2 'backing-storage)))
+        (unless (and (>= i1 is) (< i1 ie))
+          (error "invalid index value"))
+        (unless (and (= n2 1) (= m2 m1))               ; 結果は 1 x m1 になる
+          (error "array shape mismatch"))
+        (dotimes (j2 m1)
+          (f64vector-set! vec2 j2 (f64array-ref ar1 i1 (+ j2 js))))
+        ar2))))
 
 ;; 行列から列を抜き出す(2次元のみ)
 (define f64array-col
@@ -430,9 +461,31 @@
             (je (array-end    ar1 1)))
         (unless (and (>= j1 js) (< j1 je))
           (error "invalid index value"))
-        (let* ((ar2  (make-f64array (shape 0 n1 0 1)))
+        (let* ((ar2  (make-f64array (shape 0 n1 0 1))) ; 結果は n1 x 1 になる
                (vec2 (slot-ref ar2 'backing-storage)))
           (dotimes (i2 n1)
             (f64vector-set! vec2 i2 (f64array-ref ar1 (+ i2 is) j1)))
           ar2)))))
+
+;; 行列から列を抜き出す(破壊的変更版)(2次元のみ)
+(define f64array-col!
+  (if *eigenmat-loaded*
+    eigen-array-col!
+    (lambda (ar2 ar1 j1)
+      (check-array-rank ar1 ar2)
+      (let ((n1   (array-length ar1 0))
+            (m1   (array-length ar1 1))
+            (is   (array-start  ar1 0))
+            (js   (array-start  ar1 1))
+            (je   (array-end    ar1 1))
+            (n2   (array-length ar2 0))
+            (m2   (array-length ar2 1))
+            (vec2 (slot-ref ar2 'backing-storage)))
+        (unless (and (>= j1 js) (< j1 je))
+          (error "invalid index value"))
+        (unless (and (= n2 n1) (= m2 1))               ; 結果は n1 x 1 になる
+          (error "array shape mismatch"))
+        (dotimes (i2 n1)
+          (f64vector-set! vec2 i2 (f64array-ref ar1 (+ i2 is) j1)))
+        ar2))))
 
