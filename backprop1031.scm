@@ -16,7 +16,7 @@
 ;;   backprop1001.scm
 ;;
 ;; ＜変更点＞
-;;   活性化関数を ReLU 関数にし、中間層の数を1増やした。
+;;   活性化関数を ReLU 関数にし、中間層の数を1増やした
 ;;
 (add-load-path "." :relative)
 (use gauche.sequence)  ; shuffle

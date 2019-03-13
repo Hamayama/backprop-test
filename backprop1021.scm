@@ -16,7 +16,7 @@
 ;;   backprop1001.scm
 ;;
 ;; ＜変更点＞
-;;   活性化関数を ReLU 関数にした。
+;;   活性化関数を ReLU 関数にした
 ;;
 (add-load-path "." :relative)
 (use gauche.sequence)  ; shuffle

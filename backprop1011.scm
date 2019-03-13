@@ -16,7 +16,7 @@
 ;;   backprop1001.scm
 ;;
 ;; ＜変更点＞
-;;   入力の範囲を正規化しない。
+;;   入力の範囲を正規化しない
 ::
 (add-load-path "." :relative)
 (use gauche.sequence)  ; shuffle
