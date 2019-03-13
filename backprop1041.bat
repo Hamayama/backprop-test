@@ -1,2 +1,2 @@
-gosh backprop1041.scm
+gosh backprop_base.scm backprop1041.scm
 pause
