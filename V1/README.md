@@ -1,5 +1,7 @@
 # backprop-test
 
+![image](image.png)
+
 ## 概要
 - Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。  
   出典は以下になります。  

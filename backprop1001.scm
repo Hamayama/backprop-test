@@ -7,7 +7,7 @@
 ;;   パラメータ設定ファイル
 ;;     sin 関数の学習を行う
 ;;
-(define outfile        "backprop_result1001.txt")   ; 出力ファイル名
+(define outfile        "backprop_result1001.txt") ; 出力ファイル名
 
 (define input-data-0   (lrange 0 2pi 0.1))      ; 入力(リスト)
 (define correct-data-0 (map %sin input-data-0)) ; 正解(リスト)
