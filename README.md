@@ -47,6 +47,12 @@
     backprop1051.scm で、学習する関数を max(0, sin(x) + sin(2 * x)) にしたものです。  
     また、中間層の数と活性化関数を設定可能にしました。
 
+  - backprop1081.scm  
+    backprop1071.scm で、学習する関数を mod(x, 2) - 1 にしたものです (のこぎり波)。
+
+  - backprop1091.scm  
+    backprop1071.scm で、学習する関数を (2 / pi) * asin(sin(x)) にしたものです (三角波)。
+
 
 ## その他 注意事項等
 1. 同梱の f64arraysub.scm を読み込んで使用するため、同一フォルダに置いてください。  
@@ -68,16 +74,16 @@
 ## 履歴
 - 2019-3-1   v1.00 (初版)
 - 2019-3-2   v1.01 f64arraysub.scmをv1.01に更新(行列のコピー見直し等)
-- 2019-3-4   v1.02 backprop1051.scm を追加  
+- 2019-3-4   v1.02 backprop1051.scmを追加  
   f64arraysub.scmをv1.02に更新(多数の見直し、デバッグ、テスト追加)
 - 2019-3-5   v1.03 f64arraysub.scmをv1.03に更新(コメント、テスト変更等)
 - 2019-3-5   v1.04 f64arraysub.scmをv1.04に更新(f64array-transposeの見直し)
 - 2019-3-5   v1.05 f64arraysub.scmをv1.05に更新(f64array-copyの見直し)
 - 2019-3-8   v1.10 コメント変更等  
   f64arraysub.scmをv1.10に更新(make-f64array-same-shapeを追加)
-- 2019-3-9   v1.11 backprop1061.scm を追加。その他、コメント追加等  
+- 2019-3-9   v1.11 backprop1061.scmを追加。その他、コメント追加等  
   f64arraysub.scmをv1.11に更新(コメント、テスト追加)
-- 2019-3-9   v1.12 backprop1071.scm を追加。その他、コメント追加等
+- 2019-3-9   v1.12 backprop1071.scmを追加。その他、コメント追加等
 - 2019-3-9   v1.13 f64arraysub.scmをv1.13に更新(f64array-copy!,f64array-map!を追加)
 - 2019-3-11  v1.14 backprop1051/1061/1071.scmを変更(転置行列を破壊的変更で作成)  
   f64arraysub.scmをv1.14に更新(f64array-transpose!,f64array-row!,f64array-col!を追加)
@@ -85,6 +91,7 @@
 - 2019-3-11  v1.16 backprop1051/1061/1071.scmを変更(転置行列の初期化見直し)  
   f64arraysub.scmをv1.16に更新(コメント追加)
 - 2019-3-11  v1.17 f64arraysub.scmをv1.17に更新(array-copy!を修正)
+- 2019-3-13  v1.18 backprop1081/1091.scmを追加
 
 
-(2019-3-11)
+(2019-3-13)
