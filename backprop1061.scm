@@ -1,10 +1,11 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1061.scm
-;; 2019-3-13 v2.00
+;; 2019-3-13 v2.01
 ;;
 ;; ＜内容＞
-;;   学習する関数を sin(x) + sin(2 * x) にした
+;;   パラメータ設定ファイル
+;;     学習する関数を sin(x) + sin(2 * x) にした
 ;;
 (define outfile        "backprop_result1061.txt") ; 出力ファイル名
 

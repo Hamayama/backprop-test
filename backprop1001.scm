@@ -1,10 +1,11 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1001.scm
-;; 2019-3-13 v2.00
+;; 2019-3-13 v2.01
 ;;
 ;; ＜内容＞
-;;   sin 関数の学習を行う
+;;   パラメータ設定ファイル
+;;     sin 関数の学習を行う
 ;;
 (define outfile        "backprop_result1001.txt")   ; 出力ファイル名
 

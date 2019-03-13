@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
-;; backprop_base.scm
-;; 2019-3-13 v2.00
+;; backprop_main.scm
+;; 2019-3-13 v2.01
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -9,15 +9,16 @@
 ;;   「はじめてのディープラーニング」 我妻幸長 SB Creative 2018
 ;;     (「5.9 バックプロパゲーションの実装 -回帰-」)
 ;;
-;;   ただし、高速化のために計算用の行列を使用しており、
-;;   オリジナルより若干プログラムが複雑になっています。
+;;   ただし、高速化のために計算用の行列を追加しており、
+;;   そのためオリジナルのプログラムよりも若干複雑になっています。
+;;   また、中間層の数の設定と、活性化関数 (シグモイド / ReLU) の選択を可能にしています。
 ;;
 ;;   詳細については、以下のページを参照ください。
 ;;   https://github.com/Hamayama/backprop-test
 ;;
 ;; ＜使い方＞
-;;   gosh backprop_base.scm paramfile
-;;     paramfile : パラメータ設定用ファイル
+;;   gosh backprop_main.scm paramfile
+;;     paramfile : パラメータ設定ファイル
 ;;
 (add-load-path "." :relative)
 (use gauche.sequence)  ; shuffle
@@ -218,13 +219,13 @@
 
 ;; メイン処理
 (define (main args)
-  (define fname   (list-ref args 1 #f))
-  (define mls     #f)
-  (define mls-rev #f)
-  (define ol      #f)
+  (define paramfile (list-ref args 1 #f))
+  (define mls       #f)
+  (define mls-rev   #f)
+  (define ol        #f)
 
-  ;; 設定のロード
-  (if fname (load fname))
+  ;; パラメータ設定ファイルのロード
+  (if paramfile (load paramfile))
 
   ;; 各層の生成
   (set! mls     (vector-tabulate ml-num (lambda (ml) (make <middle-layer>))))

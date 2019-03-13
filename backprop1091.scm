@@ -1,10 +1,11 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1091.scm
-;; 2019-3-13 v2.00
+;; 2019-3-13 v2.01
 ;;
 ;; ＜内容＞
-;;   学習する関数を (2 / pi) * asin(sin(x)) にした (三角波)
+;;   パラメータ設定ファイル
+;;     学習する関数を (2 / pi) * asin(sin(x)) にした (三角波)
 ;;
 (define outfile        "backprop_result1091.txt") ; 出力ファイル名
 
