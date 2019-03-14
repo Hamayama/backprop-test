@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; f64arraysub.scm
-;; 2019-3-11 v1.17
+;; 2019-3-14 v2.02
 ;;
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
@@ -101,6 +101,7 @@
                          (uvector-copy v)))))
 
 ;; 行列のコピー(破壊的変更版)(タイプかサイズが違うときはエラー)
+;; (戻り値は未定義)
 (define (array-copy! A B)
   (slot-set! A 'start-vector (slot-ref B 'start-vector))
   (slot-set! A 'end-vector   (slot-ref B 'end-vector))
@@ -117,7 +118,7 @@
      (else
       (error "can't copy array (type or size mismatch)")))))
 
-;; f64array を返す array-copy (エラーチェックなし)
+;; f64array 用の array-copy (エラーチェックなし)
 (define (f64array-copy A)
   (if (eq? (class-of A) <f64array>)
     (array-copy A)
@@ -127,17 +128,19 @@
       :mapper          (slot-ref A 'mapper)
       :backing-storage (coerce-to <f64vector> (slot-ref A 'backing-storage)))))
 
-;; f64array を返す array-copy! (エラーチェックなし)
+;; f64array 用の array-copy! (エラーチェックなし)
+;; (戻り値は未定義)
 (define f64array-copy! array-copy!)
 
-;; f64array を返す array-map (ただし shape の明示指定は不可)
+;; f64array 用の array-map (ただし shape の明示指定は不可)
 (define (f64array-map proc ar0 . rest)
   (rlet1 ar (if (eq? (class-of ar0) <f64array>)
               (array-copy ar0)
               (make-f64array (array-shape ar0)))
     (apply array-map! ar proc ar0 rest)))
 
-;; f64array を返す array-map! (エラーチェックなし)
+;; f64array 用の array-map! (エラーチェックなし)
+;; (戻り値は未定義)
 (define f64array-map! array-map!)
 
 ;; 転置行列の生成(Gauche v0.9.7 の不具合対応(resの生成) + 高速化)
@@ -170,6 +173,17 @@
                    (vector-set! vec2 dim2 tmp)
                    (array-set! res vec2 (array-ref a vec1))))
         (make-vector rank)))))
+
+;; 行列のタイプのチェック
+(define-syntax check-array-type
+  (syntax-rules ()
+    ((_ A)
+     (unless (eq? (class-of A) <f64array>)
+       (error "f64array required")))
+    ((_ A B ...)
+     (unless (and (eq? (class-of A) <f64array>)
+                  (eq? (class-of B) <f64array>) ...)
+       (error "f64array required")))))
 
 ;; 行列の次元数のチェック
 (define-syntax check-array-rank
@@ -259,7 +273,7 @@
 (define f64array-add-elements
   (if *eigenmat-loaded*
     (lambda (ar . rest) (fold-left eigen-array-add ar rest))
-    (with-module gauche.array array-add-elements)))
+    array-add-elements))
 
 ;; 行列の和を計算(破壊的変更版)
 ;; (第1引数は結果を格納するためだけに使用)
@@ -270,16 +284,14 @@
       (for-each (lambda (arX) (eigen-array-add! ar ar arX)) rest)
       ar)
     (lambda (ar . rest)
-      (f64array-copy!
-       ar
-       (apply (with-module gauche.array array-add-elements) rest))
+      (f64array-copy! ar (apply array-add-elements rest))
       ar)))
 
 ;; 行列の差を計算
 (define f64array-sub-elements
   (if *eigenmat-loaded*
     (lambda (ar . rest) (fold-left eigen-array-sub ar rest))
-    (with-module gauche.array array-sub-elements)))
+    array-sub-elements))
 
 ;; 行列の差を計算(破壊的変更版)
 ;; (第1引数は結果を格納するためだけに使用)
@@ -290,16 +302,14 @@
       (for-each (lambda (arX) (eigen-array-sub! ar ar arX)) rest)
       ar)
     (lambda (ar . rest)
-      (f64array-copy!
-       ar
-       (apply (with-module gauche.array array-sub-elements) rest))
+      (f64array-copy! ar (apply array-sub-elements rest))
       ar)))
 
 ;; 行列の積を計算(2次元のみ)
 (define f64array-mul
   (if *eigenmat-loaded*
     eigen-array-mul
-    (with-module gauche.array array-mul)))
+    array-mul))
 
 ;; 行列の積を計算(破壊的変更版)(2次元のみ)
 ;; (第1引数は結果を格納するためだけに使用)
@@ -307,14 +317,14 @@
   (if *eigenmat-loaded*
     eigen-array-mul!
     (lambda (ar ar0 ar1)
-      (f64array-copy! ar ((with-module gauche.array array-mul) ar0 ar1))
+      (f64array-copy! ar (array-mul ar0 ar1))
       ar)))
 
 ;; 行列の要素の積を計算
 (define f64array-mul-elements
   (if *eigenmat-loaded*
     (lambda (ar . rest) (fold-left eigen-array-mul-elements ar rest))
-    (with-module gauche.array array-mul-elements)))
+    array-mul-elements))
 
 ;; 行列の要素の積を計算(破壊的変更版)
 ;; (第1引数は結果を格納するためだけに使用)
@@ -325,9 +335,7 @@
       (for-each (lambda (arX) (eigen-array-mul-elements! ar ar arX)) rest)
       ar)
     (lambda (ar . rest)
-      (f64array-copy!
-       ar
-       (apply (with-module gauche.array array-mul-elements) rest))
+      (f64array-copy! ar (apply array-mul-elements rest))
       ar)))
 
 ;; 行列の要素に対して、シグモイド関数を計算
@@ -413,6 +421,7 @@
   (if *eigenmat-loaded*
     eigen-array-row
     (lambda (ar1 i1)
+      (check-array-type ar1)
       (check-array-rank ar1)
       (let ((n1 (array-length ar1 0))
             (m1 (array-length ar1 1))
@@ -433,6 +442,7 @@
   (if *eigenmat-loaded*
     eigen-array-row!
     (lambda (ar2 ar1 i1)
+      (check-array-type ar1 ar2)
       (check-array-rank ar1 ar2)
       (let ((n1   (array-length ar1 0))
             (m1   (array-length ar1 1))
@@ -455,6 +465,7 @@
   (if *eigenmat-loaded*
     eigen-array-col
     (lambda (ar1 j1)
+      (check-array-type ar1)
       (check-array-rank ar1)
       (let ((n1 (array-length ar1 0))
             (m1 (array-length ar1 1))
@@ -475,6 +486,7 @@
   (if *eigenmat-loaded*
     eigen-array-col!
     (lambda (ar2 ar1 j1)
+      (check-array-type ar1 ar2)
       (check-array-rank ar1 ar2)
       (let ((n1   (array-length ar1 0))
             (m1   (array-length ar1 1))
