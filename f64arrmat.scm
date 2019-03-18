@@ -1,14 +1,17 @@
 ;; -*- coding: utf-8 -*-
 ;;
-;; f64arraysub.scm
-;; 2019-3-14 v2.02
+;; f64arrmat.scm
+;; 2019-3-19 v1.00
 ;;
 ;; ＜内容＞
-;;   Gauche で、2次元の f64array を扱うための補助的なモジュールです。
-;;   gauche.array および eigenmat モジュールより後に
-;;   use されることを想定しています。
+;;   Gauche で、2次元の f64array を扱うためのモジュールです。
+;;   gauche.array, eigenmat, blasmat モジュールよりも後に
+;;   use して使用することを想定しています。
 ;;
-(define-module f64arraysub
+;;   詳細については、以下のページを参照ください。
+;;   https://github.com/Hamayama/f64arrmat
+;;
+(define-module f64arrmat
   (use gauche.sequence)
   (use gauche.uvector)
   (use gauche.array)
@@ -16,7 +19,11 @@
   ;(use eigenmat)
   (define-module eigenmat)
   (import eigenmat)
+  ;(use blasmat)
+  (define-module blasmat)
+  (import blasmat)
   (export
+    f64array-cache-on     f64array-cache-off
     f64array-ref          f64array-set!
     f64array-copy         f64array-copy!
     f64array-map          f64array-map!
@@ -33,8 +40,10 @@
     f64array-transpose    f64array-transpose!
     f64array-row          f64array-row!
     f64array-col          f64array-col!
+    f64array-ra+b         f64array-ra+b!
+    f64array-ab+c         f64array-ab+c!
     ))
-(select-module f64arraysub)
+(select-module f64arrmat)
 
 ;; eigenmat モジュールのロード
 ;; (存在しなければ使用しない)
@@ -42,6 +51,33 @@
 (define *eigenmat-loaded*
   (and (not (global-variable-ref (current-module) '*disable-eigenmat* #f))
        (load "eigenmat" :error-if-not-found #f)))
+
+;; blasmat モジュールのロード
+;; (存在しなければ使用しない)
+;(define *disable-blasmat* #t) ; 無効化フラグ
+(define *blasmat-loaded*
+  (and (not (global-variable-ref (current-module) '*disable-blasmat* #f))
+       (load "blasmat" :error-if-not-found #f)))
+
+;; s32vector をハッシュテーブルのキーに使えるようにする
+;; (Gauche の開発最新版では、デフォルトで使用可能)
+(when (guard (ex (else #t)) (default-hash #s32(1)) #f)
+  ;; for Gauche v0.9.4
+  (if (version<=? (gauche-version) "0.9.4")
+    (define-method object-hash ((obj <s32vector>))
+      (hash (s32vector->vector obj)))
+    (define-method object-hash ((obj <s32vector>) rec-hash)
+      (rec-hash (s32vector->vector obj)))))
+
+;; 行列のキャッシュ(ハッシュテーブル)
+(define use-f64array-cache #t) ; 使用有無
+(define f64array-cache-table (make-hash-table 'equal?))
+
+;; 行列のキャッシュ使用/未使用
+(define (f64array-cache-on)
+  (set! use-f64array-cache #t))
+(define (f64array-cache-off)
+  (set! use-f64array-cache #f))
 
 ;; shape の内部処理の高速化
 (select-module gauche.array)
@@ -53,7 +89,7 @@
     ;        (map-to <s32vector> (^i (array-ref shape i 1)) cnt))))
     (values (map-to <s32vector> (^i (vector-ref vec (* i 2))) cnt)
             (map-to <s32vector> (^i (vector-ref vec (+ (* i 2) 1))) cnt))))
-(select-module f64arraysub)
+(select-module f64arrmat)
 
 ;; 行列の情報取得(エラーチェックなし)
 (define-inline (array-rank   A)
@@ -65,6 +101,27 @@
 (define-inline (array-length A dim)
   (- (s32vector-ref (slot-ref A 'end-vector)   dim)
      (s32vector-ref (slot-ref A 'start-vector) dim)))
+
+;; 行列のタイプのチェック
+(define-syntax check-array-type
+  (syntax-rules ()
+    ((_ A)
+     (unless (eq? (class-of A) <f64array>)
+       (error "f64array required")))
+    ((_ A B ...)
+     (unless (and (eq? (class-of A) <f64array>)
+                  (eq? (class-of B) <f64array>) ...)
+       (error "f64array required")))))
+
+;; 行列の次元数のチェック
+(define-syntax check-array-rank
+  (syntax-rules ()
+    ((_ A)
+     (unless (= (array-rank A) 2)
+       (error "array rank must be 2")))
+    ((_ A B ...)
+     (unless (= (array-rank A) (array-rank B) ... 2)
+       (error "array rank must be 2")))))
 
 ;; 行列の要素の参照(2次元のみ)
 (define (f64array-ref A i j)
@@ -78,6 +135,7 @@
                    (+ (* (- i is) (- je js)) (- j js)))))
 
 ;; 行列の要素の設定(2次元のみ)
+;; (戻り値は未定義)
 (define (f64array-set! A i j d)
   (let ((is (s32vector-ref (slot-ref A 'start-vector) 0))
         (ie (s32vector-ref (slot-ref A 'end-vector)   0))
@@ -143,6 +201,75 @@
 ;; (戻り値は未定義)
 (define f64array-map! array-map!)
 
+;; 行列の生成(簡略版)(2次元のみ)(キャッシュ使用)
+(define (make-f64array-simple ns ne ms me . maybe-init)
+  (if use-f64array-cache
+    (let1 key (s32vector ns ne ms me)
+      (if-let1 A (hash-table-get f64array-cache-table key #f)
+        (if (or (null? maybe-init) (= (car maybe-init) 0))
+          (array-copy A)
+          (rlet1 B (array-copy A)
+            (f64vector-fill! (slot-ref B 'backing-storage) (car maybe-init))))
+        (let1 B ((with-module gauche.array %make-array-internal-sub)
+                 <f64array> (shape ns ne ms me) 0)
+          (hash-table-put! f64array-cache-table key B)
+          (if (or (null? maybe-init) (= (car maybe-init) 0))
+            (array-copy B)
+            (rlet1 C (array-copy B)
+              (f64vector-fill! (slot-ref C 'backing-storage) (car maybe-init)))))))
+    (apply (with-module gauche.array %make-array-internal-sub)
+           <f64array> (shape ns ne ms me) maybe-init)))
+
+;; 同じ shape の行列の生成(簡略版)(2次元のみ)
+(define (make-f64array-same-shape A . maybe-init)
+  (check-array-rank A)
+  (let ((ns (array-start A 0))
+        (ne (array-end   A 0))
+        (ms (array-start A 1))
+        (me (array-end   A 1)))
+    (apply make-f64array-simple ns ne ms me maybe-init)))
+
+;; 行列の初期化データ付き生成(簡略版)(2次元のみ)
+(define (f64array-simple ns ne ms me . inits)
+  (rlet1 ar (make-f64array-simple ns ne ms me 0)
+    (f64vector-copy! (slot-ref ar 'backing-storage)
+                     0 (list->f64vector inits))))
+
+;; eigenmat モジュールの行列の生成を上書き(キャッシュを統一するため)
+(select-module eigenmat)
+(define eigen-make-array
+  (with-module f64arrmat make-f64array-simple))
+(define eigen-make-array-same-shape
+  (with-module f64arrmat make-f64array-same-shape))
+(define eigen-array
+  (with-module f64arrmat f64array-simple))
+(select-module f64arrmat)
+
+;; 行列の生成(内部処理用)(キャッシュ使用)
+(select-module gauche.array)
+(define (%make-array-internal-sub class shape . maybe-init)
+  (receive (Vb Ve) (shape->start/end-vector shape)
+    (make class
+      :start-vector Vb
+      :end-vector Ve
+      :mapper (generate-amap Vb Ve)
+      :backing-storage (apply (backing-storage-creator-of class)
+                              (fold * 1 (s32vector-sub Ve Vb))
+                              maybe-init))))
+(define (make-array-internal class shape . maybe-init)
+  (if (and (with-module f64arrmat use-f64array-cache)
+           (eq? class <f64array>)
+           (equal? (slot-ref shape 'end-vector) #s32(2 2))) ; rank 2
+    (receive (Vb Ve) (shape->start/end-vector shape)
+      (let ((ns (s32vector-ref Vb 0))
+            (ne (s32vector-ref Ve 0))
+            (ms (s32vector-ref Vb 1))
+            (me (s32vector-ref Ve 1)))
+        (apply (with-module f64arrmat make-f64array-simple)
+               ns ne ms me maybe-init)))
+    (apply %make-array-internal-sub class shape maybe-init)))
+(select-module f64arrmat)
+
 ;; 転置行列の生成(Gauche v0.9.7 の不具合対応(resの生成) + 高速化)
 (define (%array-transpose a :optional (dim1 0) (dim2 1))
   (let* ([sh (array-copy (array-shape a))]
@@ -174,69 +301,10 @@
                    (array-set! res vec2 (array-ref a vec1))))
         (make-vector rank)))))
 
-;; 行列のタイプのチェック
-(define-syntax check-array-type
-  (syntax-rules ()
-    ((_ A)
-     (unless (eq? (class-of A) <f64array>)
-       (error "f64array required")))
-    ((_ A B ...)
-     (unless (and (eq? (class-of A) <f64array>)
-                  (eq? (class-of B) <f64array>) ...)
-       (error "f64array required")))))
-
-;; 行列の次元数のチェック
-(define-syntax check-array-rank
-  (syntax-rules ()
-    ((_ A)
-     (unless (= (array-rank A) 2)
-       (error "array rank must be 2")))
-    ((_ A B ...)
-     (unless (= (array-rank A) (array-rank B) ... 2)
-       (error "array rank must be 2")))))
 
 ;; == 以下では、eigenmat モジュールがあれば使用する ==
+;; (ただし f64array-mul! は、blasmat モジュールがあれば優先的に使用する)
 
-;; 行列の生成(簡略版)(2次元のみ)
-(define make-f64array-simple
-  (if *eigenmat-loaded*
-    (lambda (ns ne ms me . maybe-init)
-      (rlet1 ar (eigen-make-array ns ne ms me)
-        (unless (null? maybe-init)
-          (f64vector-fill! (slot-ref ar 'backing-storage)
-                           (car maybe-init)))))
-    (lambda (ns ne ms me . maybe-init)
-      (apply make-f64array (shape ns ne ms me) maybe-init))))
-
-;; 同じ shape の行列の生成(簡略版)(2次元のみ)
-(define make-f64array-same-shape
-  (if *eigenmat-loaded*
-    (lambda (A . maybe-init)
-      (check-array-rank A)
-      (let ((ns (array-start A 0))
-            (ne (array-end   A 0))
-            (ms (array-start A 1))
-            (me (array-end   A 1)))
-        (rlet1 ar (eigen-make-array ns ne ms me)
-          (unless (null? maybe-init)
-            (f64vector-fill! (slot-ref ar 'backing-storage)
-                             (car maybe-init))))))
-    (lambda (A . maybe-init)
-      (check-array-rank A)
-      (let ((ns (array-start A 0))
-            (ne (array-end   A 0))
-            (ms (array-start A 1))
-            (me (array-end   A 1)))
-        (apply make-f64array (shape ns ne ms me) maybe-init)))))
-
-;; 行列の初期化データ付き生成(簡略版)(2次元のみ)
-(define f64array-simple
-  (if *eigenmat-loaded*
-    eigen-array
-    (lambda (ns ne ms me . inits)
-      (rlet1 ar (make-f64array (shape ns ne ms me) 0)
-        (f64vector-copy! (slot-ref ar 'backing-storage)
-                         0 (list->f64vector inits))))))
 
 ;; 行列の一致チェック
 (define f64array-nearly=?
@@ -314,11 +382,17 @@
 ;; 行列の積を計算(破壊的変更版)(2次元のみ)
 ;; (第1引数は結果を格納するためだけに使用)
 (define f64array-mul!
-  (if *eigenmat-loaded*
-    eigen-array-mul!
+  (cond
+   (*blasmat-loaded*
+    (lambda (ar ar0 ar1)
+      (f64vector-fill! (slot-ref ar 'backing-storage) 0)
+      (blas-array-dgemm ar0 ar1 ar 1.0 1.0)))
+   (*eigenmat-loaded*
+    eigen-array-mul!)
+   (else
     (lambda (ar ar0 ar1)
       (f64array-copy! ar (array-mul ar0 ar1))
-      ar)))
+      ar))))
 
 ;; 行列の要素の積を計算
 (define f64array-mul-elements
@@ -430,7 +504,7 @@
             (js (array-start  ar1 1)))
         (unless (and (>= i1 is) (< i1 ie))
           (error "invalid index value"))
-        (let* ((ar2  (make-f64array (shape 0 1 0 m1))) ; 結果は 1 x m1 になる
+        (let* ((ar2  (make-f64array-simple 0 1 0 m1))  ; 結果は 1 x m1 になる
                (vec2 (slot-ref ar2 'backing-storage)))
           (dotimes (j2 m1)
             (f64vector-set! vec2 j2 (f64array-ref ar1 i1 (+ j2 js))))
@@ -474,7 +548,7 @@
             (je (array-end    ar1 1)))
         (unless (and (>= j1 js) (< j1 je))
           (error "invalid index value"))
-        (let* ((ar2  (make-f64array (shape 0 n1 0 1))) ; 結果は n1 x 1 になる
+        (let* ((ar2  (make-f64array-simple 0 n1 0 1))  ; 結果は n1 x 1 になる
                (vec2 (slot-ref ar2 'backing-storage)))
           (dotimes (i2 n1)
             (f64vector-set! vec2 i2 (f64array-ref ar1 (+ i2 is) j1)))
@@ -503,4 +577,56 @@
         (dotimes (i2 n1)
           (f64vector-set! vec2 i2 (f64array-ref ar1 (+ i2 is) j1)))
         ar2))))
+
+
+;; == 以下では、blasmat モジュールがあれば使用する ==
+
+
+;; rA+B を計算
+(define f64array-ra+b
+  (if *blasmat-loaded*
+    (lambda (r A B)
+      (let1 C (f64array-copy B)
+        (blas-array-daxpy A C r)))
+    (lambda (r A B)
+      (let1 C (make-f64array-same-shape B)
+        (f64array-add-elements! C (f64array-mul-elements! C A r) B)))))
+
+;; rA+B を計算(破壊的変更版)
+;; (第1引数は結果を格納するためだけに使用)
+(define f64array-ra+b!
+  (if *blasmat-loaded*
+    (lambda (C r A B)
+      (f64array-copy! C B)
+      (blas-array-daxpy A C r))
+    (lambda (C r A B)
+      (if (eq? C B)
+        ;; C と B が同じ行列のときは、D を生成しないと壊れる
+        (let1 D (make-f64array-same-shape C)
+          (f64array-add-elements! C (f64array-mul-elements! D A r) B))
+        (f64array-add-elements! C (f64array-mul-elements! C A r) B)))))
+
+;; AB+C を計算
+(define f64array-ab+c
+  (if *blasmat-loaded*
+    (lambda (A B C)
+      (let1 D (f64array-copy C)
+        (blas-array-dgemm A B D 1.0 1.0)))
+    (lambda (A B C)
+      (let1 D (make-f64array-same-shape C)
+        (f64array-add-elements! D (f64array-mul! D A B) C)))))
+
+;; AB+C を計算(破壊的変更版)
+;; (第1引数は結果を格納するためだけに使用)
+(define f64array-ab+c!
+  (if *blasmat-loaded*
+    (lambda (D A B C)
+      (f64array-copy! D C)
+      (blas-array-dgemm A B D 1.0 1.0))
+    (lambda (D A B C)
+      (if (eq? D C)
+        ;; D と C が同じ行列のときは、E を生成しないと壊れる
+        (let1 E (make-f64array-same-shape D)
+          (f64array-add-elements! D (f64array-mul! E A B) C))
+        (f64array-add-elements! D (f64array-mul! D A B) C)))))
 

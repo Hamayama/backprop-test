@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-3-13 v2.01
+;; 2019-3-19 v2.10
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -28,7 +28,7 @@
 (use math.const)
 (use data.random)      ; random-data-seed,reals-normal$
 (use srfi-27)          ; random-source-randomize!,default-random-source
-(use f64arraysub)      ; 補助モジュール
+(use f64arrmat)        ; 2次元の f64array を扱う
 
 ;; 乱数の初期化
 (set! (random-data-seed) (sys-time)) ; data.random (for reals-normal$)
@@ -75,8 +75,6 @@
    (grad-x :init-value #f) ; 入力の勾配    (行列(サイズはxと同じ))
    (u      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    (delta  :init-value #f) ; 計算用        (行列(サイズはyと同じ))
-   (w0     :init-value #f) ; 計算用        (行列(サイズはwと同じ))
-   (b0     :init-value #f) ; 計算用        (行列(サイズはbと同じ))
    (tx     :init-value #f) ; 計算用        (行列(サイズはxの転置))
    (tw     :init-value #f) ; 計算用        (行列(サイズはwの転置))
    ))
@@ -96,56 +94,55 @@
   (slot-set! ml 'grad-x (make-f64array-same-shape (slot-ref ml 'x)))
   (slot-set! ml 'u      (make-f64array-same-shape (slot-ref ml 'y)))
   (slot-set! ml 'delta  (make-f64array-same-shape (slot-ref ml 'y)))
-  (slot-set! ml 'w0     (make-f64array-same-shape (slot-ref ml 'w)))
-  (slot-set! ml 'b0     (make-f64array-same-shape (slot-ref ml 'b)))
   (slot-set! ml 'tx     (make-f64array-same-shape (f64array-transpose (slot-ref ml 'x))))
   (slot-set! ml 'tw     (make-f64array-same-shape (f64array-transpose (slot-ref ml 'w))))
   )
 (define (middle-layer-forward ml x)
   (slot-set! ml 'x x)
-  (slot-set! ml 'u (f64array-add-elements!
-                    (slot-ref ml 'u)
-                    (f64array-mul! (slot-ref ml 'u) x (slot-ref ml 'w))
-                    (slot-ref ml 'b)))
-  (slot-set! ml 'y
-             (if (eq? ml-func 'sigmoid)
-               (f64array-sigmoid!         ; シグモイド関数 ( 1/(1+exp(-u)) )
-                (slot-ref ml 'y)
-                (slot-ref ml 'u))
-               (f64array-relu!            ; ReLU関数 ( (max 0 u) )
-                (slot-ref ml 'y)
-                (slot-ref ml 'u))))
+  ;; u = x * w + b
+  (f64array-ab+c! (slot-ref ml 'u) x (slot-ref ml 'w) (slot-ref ml 'b))
+  (cond
+   ((eq? ml-func 'sigmoid)
+    (f64array-sigmoid!         ; シグモイド関数 ( 1/(1+exp(-u)) )
+     (slot-ref ml 'y)
+     (slot-ref ml 'u)))
+   (else
+    (f64array-relu!            ; ReLU関数 ( (max 0 u) )
+     (slot-ref ml 'y)
+     (slot-ref ml 'u))))
   )
 (define (middle-layer-backward ml grad-y)
-  (slot-set! ml 'delta
-             (if (eq? ml-func 'sigmoid)
-               (f64array-mul-elements!    ; シグモイド関数の微分 ( grad-y*(1-y)*y )
-                (slot-ref ml 'delta)
-                (f64array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
-                grad-y
-                -1
-                ;; (破壊的変更の関係で前に移動)
-                ;(f64array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
-                (slot-ref ml 'y))
-               (f64array-mul-elements!    ; ReLU関数の微分 ( ステップ関数 )
-                (slot-ref ml 'delta)
-                grad-y
-                (f64array-step! (slot-ref ml 'delta) (slot-ref ml 'y)))))
-  (slot-set! ml 'grad-w (f64array-mul!
-                         (slot-ref ml 'grad-w)
-                         (f64array-transpose! (slot-ref ml 'tx) (slot-ref ml 'x))
-                         (slot-ref ml 'delta)))
+  (cond
+   ((eq? ml-func 'sigmoid)
+    (f64array-mul-elements!    ; シグモイド関数の微分 ( grad-y*(1-y)*y )
+     (slot-ref ml 'delta)
+     (f64array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
+     grad-y
+     -1
+     ;; (破壊的変更の関係で前に移動)
+     ;(f64array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
+     (slot-ref ml 'y)))
+   (else
+    (f64array-mul-elements!    ; ReLU関数の微分 ( ステップ関数 )
+     (slot-ref ml 'delta)
+     grad-y
+     (f64array-step! (slot-ref ml 'delta) (slot-ref ml 'y)))))
+  ;; grad-w = tx * delta
+  (f64array-mul! (slot-ref ml 'grad-w)
+                 (f64array-transpose! (slot-ref ml 'tx) (slot-ref ml 'x))
+                 (slot-ref ml 'delta))
+  ;; grad-b = delta
   (slot-set! ml 'grad-b (slot-ref ml 'delta))
-  (slot-set! ml 'grad-x (f64array-mul!
-                         (slot-ref ml 'grad-x)
-                         (slot-ref ml 'delta)
-                         (f64array-transpose! (slot-ref ml 'tw) (slot-ref ml 'w))))
+  ;; grad-x = delta * tw
+  (f64array-mul! (slot-ref ml 'grad-x)
+                 (slot-ref ml 'delta)
+                 (f64array-transpose! (slot-ref ml 'tw) (slot-ref ml 'w)))
   )
 (define (middle-layer-update ml eta)
-  (slot-set! ml 'w0 (f64array-mul-elements! (slot-ref ml 'w0) (slot-ref ml 'grad-w) eta))
-  (slot-set! ml 'w  (f64array-sub-elements! (slot-ref ml 'w)  (slot-ref ml 'w) (slot-ref ml 'w0)))
-  (slot-set! ml 'b0 (f64array-mul-elements! (slot-ref ml 'b0) (slot-ref ml 'grad-b) eta))
-  (slot-set! ml 'b  (f64array-sub-elements! (slot-ref ml 'b)  (slot-ref ml 'b) (slot-ref ml 'b0)))
+  ;; w -= eta * grad-w
+  (f64array-ra+b! (slot-ref ml 'w) (- eta) (slot-ref ml 'grad-w) (slot-ref ml 'w))
+  ;; b -= eta * grad-b
+  (f64array-ra+b! (slot-ref ml 'b) (- eta) (slot-ref ml 'grad-b) (slot-ref ml 'b))
   )
 
 
@@ -160,8 +157,6 @@
    (grad-x :init-value #f) ; 入力の勾配    (行列(サイズはxと同じ))
    (u      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    (delta  :init-value #f) ; 計算用        (行列(サイズはyと同じ))
-   (w0     :init-value #f) ; 計算用        (行列(サイズはwと同じ))
-   (b0     :init-value #f) ; 計算用        (行列(サイズはbと同じ))
    (tx     :init-value #f) ; 計算用        (行列(サイズはxの転置))
    (tw     :init-value #f) ; 計算用        (行列(サイズはwの転置))
    (t      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
@@ -182,47 +177,46 @@
   (slot-set! ol 'grad-x (make-f64array-same-shape (slot-ref ol 'x)))
   (slot-set! ol 'u      (make-f64array-same-shape (slot-ref ol 'y)))
   (slot-set! ol 'delta  (make-f64array-same-shape (slot-ref ol 'y)))
-  (slot-set! ol 'w0     (make-f64array-same-shape (slot-ref ol 'w)))
-  (slot-set! ol 'b0     (make-f64array-same-shape (slot-ref ol 'b)))
   (slot-set! ol 'tx     (make-f64array-same-shape (f64array-transpose (slot-ref ol 'x))))
   (slot-set! ol 'tw     (make-f64array-same-shape (f64array-transpose (slot-ref ol 'w))))
   (slot-set! ol 't      (make-f64array-same-shape (slot-ref ol 'y)))
   )
 (define (output-layer-forward ol x)
   (slot-set! ol 'x x)
-  (slot-set! ol 'u (f64array-add-elements!
-                    (slot-ref ol 'u)
-                    (f64array-mul! (slot-ref ol 'u) x (slot-ref ol 'w))
-                    (slot-ref ol 'b)))
+  ;; u = x * w + b
+  (f64array-ab+c! (slot-ref ol 'u) x (slot-ref ol 'w) (slot-ref ol 'b))
+  ;; y = u
   (slot-set! ol 'y (slot-ref ol 'u)) ; 恒等関数
   )
 (define (output-layer-backward ol t)
   (slot-set! ol 't t)
-  (slot-set! ol 'delta  (f64array-sub-elements! (slot-ref ol 'delta) (slot-ref ol 'y) t))
-  (slot-set! ol 'grad-w (f64array-mul!
-                         (slot-ref ol 'grad-w)
-                         (f64array-transpose! (slot-ref ol 'tx) (slot-ref ol 'x))
-                         (slot-ref ol 'delta)))
+  ;; delta = y - t
+  (f64array-sub-elements! (slot-ref ol 'delta) (slot-ref ol 'y) t)
+  ;; grad-w = tx * delta
+  (f64array-mul! (slot-ref ol 'grad-w)
+                 (f64array-transpose! (slot-ref ol 'tx) (slot-ref ol 'x))
+                 (slot-ref ol 'delta))
+  ;; grad-b = delta
   (slot-set! ol 'grad-b (slot-ref ol 'delta))
-  (slot-set! ol 'grad-x (f64array-mul!
-                         (slot-ref ol 'grad-x)
-                         (slot-ref ol 'delta)
-                         (f64array-transpose! (slot-ref ol 'tw) (slot-ref ol 'w))))
+  ;; grad-x = delta * tw
+  (f64array-mul! (slot-ref ol 'grad-x)
+                 (slot-ref ol 'delta)
+                 (f64array-transpose! (slot-ref ol 'tw) (slot-ref ol 'w)))
   )
 (define (output-layer-update ol eta)
-  (slot-set! ol 'w0 (f64array-mul-elements! (slot-ref ol 'w0) (slot-ref ol 'grad-w) eta))
-  (slot-set! ol 'w  (f64array-sub-elements! (slot-ref ol 'w)  (slot-ref ol 'w) (slot-ref ol 'w0)))
-  (slot-set! ol 'b0 (f64array-mul-elements! (slot-ref ol 'b0) (slot-ref ol 'grad-b) eta))
-  (slot-set! ol 'b  (f64array-sub-elements! (slot-ref ol 'b)  (slot-ref ol 'b) (slot-ref ol 'b0)))
+  ;; w -= eta * grad-w
+  (f64array-ra+b! (slot-ref ol 'w) (- eta) (slot-ref ol 'grad-w) (slot-ref ol 'w))
+  ;; b -= eta * grad-b
+  (f64array-ra+b! (slot-ref ol 'b) (- eta) (slot-ref ol 'grad-b) (slot-ref ol 'b))
   )
 
 
 ;; メイン処理
 (define (main args)
   (define paramfile (list-ref args 1 #f))
-  (define mls       #f)
-  (define mls-rev   #f)
-  (define ol        #f)
+  (define mls       #f) ; 中間層(ベクタ)
+  (define mls-rev   #f) ; 中間層の逆順(ベクタ)
+  (define ol        #f) ; 出力層
 
   ;; パラメータ設定ファイルのロード
   (if paramfile (load paramfile))
