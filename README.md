@@ -29,7 +29,7 @@
     ```
     ここで、paramfile は、パラメータ設定ファイル (backprop1001.scm 等) です。  
     実行すると、学習を行い、最終結果 ((x,y)の組のデータ) を、  
-    パラメータ設定ファイルに設定した出力ファイルへと出力します。
+    パラメータ設定ファイルに設定した出力ファイル (backprop_result1001.txt 等) へと出力します。
 
   - backprop1001.scm  
     sin 関数の学習を行うパラメータ設定ファイルです。
@@ -52,7 +52,7 @@
 
 
 ## その他 注意事項等
-1. 同梱の f64arrmat.scm を読み込んで使用するため、同一フォルダに置いてください。  
+1. 同梱の farrmat.scm を読み込んで使用するため、同一フォルダに置いてください。  
    また、eigenmat モジュール ( https://github.com/Hamayama/eigenmat )  
    および、blasmat モジュール ( https://github.com/Hamayama/blasmat )  
    が存在すれば、使用します (環境によっては、10倍以上速くなります)。
