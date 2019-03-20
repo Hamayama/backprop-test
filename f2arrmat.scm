@@ -25,6 +25,7 @@
   (export
     f2-array-cache-on     f2-array-cache-off
     f2-array-ref          f2-array-set!
+    f2-array-fill!
     f2-array-copy         f2-array-copy!
     f2-array-map          f2-array-map!
     make-f2-array         make-f2-array-same-shape
@@ -143,6 +144,11 @@
     (f64vector-set! (slot-ref A 'backing-storage)
                     (+ (* (- i is) (- je js)) (- j js))
                     d)))
+
+;; 行列の要素の埋めつくし(エラーチェックなし)
+;; (戻り値は未定義)
+(define (f2-array-fill! A d)
+  (f64vector-fill! (slot-ref A 'backing-storage) d))
 
 ;; 行列のコピー(エラーチェックなし)
 (define (array-copy A)
@@ -382,7 +388,7 @@
    (*blasmat-loaded*
     (lambda (ar ar0 ar1)
       (f64vector-fill! (slot-ref ar 'backing-storage) 0)
-      (blas-array-dgemm ar0 ar1 ar 1.0 1.0)))
+      (blas-array-dgemm ar0 ar1 ar 1.0 1.0 #f #f)))
    (*eigenmat-loaded*
     eigen-array-mul!)
    (else
@@ -596,18 +602,16 @@
       (f2-array-copy! C B)
       (blas-array-daxpy A C r))
     (lambda (C r A B)
-      (if (eq? C B)
-        ;; C と B が同じ行列のときは、D を生成しないと壊れる
-        (let1 D (make-f2-array-same-shape C)
-          (f2-array-add-elements! C (f2-array-mul-elements! D A r) B))
-        (f2-array-add-elements! C (f2-array-mul-elements! C A r) B)))))
+      ;; C と B が同じ行列のときは、D を生成しないと壊れる
+      (let1 D (if (eq? C B) (make-f2-array-same-shape C) C)
+        (f2-array-add-elements! C (f2-array-mul-elements! D A r) B)))))
 
 ;; AB+C を計算
 (define f2-array-ab+c
   (if *blasmat-loaded*
     (lambda (A B C)
       (let1 D (f2-array-copy C)
-        (blas-array-dgemm A B D 1.0 1.0)))
+        (blas-array-dgemm A B D 1.0 1.0 #f #f)))
     (lambda (A B C)
       (let1 D (make-f2-array-same-shape C)
         (f2-array-add-elements! D (f2-array-mul! D A B) C)))))
@@ -618,11 +622,9 @@
   (if *blasmat-loaded*
     (lambda (D A B C)
       (f2-array-copy! D C)
-      (blas-array-dgemm A B D 1.0 1.0))
+      (blas-array-dgemm A B D 1.0 1.0 #f #f))
     (lambda (D A B C)
-      (if (eq? D C)
-        ;; D と C が同じ行列のときは、E を生成しないと壊れる
-        (let1 E (make-f2-array-same-shape D)
-          (f2-array-add-elements! D (f2-array-mul! E A B) C))
-        (f2-array-add-elements! D (f2-array-mul! D A B) C)))))
+      ;; D と C が同じ行列のときは、E を生成しないと壊れる
+      (let1 E (if (eq? D C) (make-f2-array-same-shape D) D)
+        (f2-array-add-elements! D (f2-array-mul! E A B) C)))))
 
