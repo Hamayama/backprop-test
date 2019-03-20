@@ -43,11 +43,11 @@
 (define correct-data-0 (map %sin input-data-0)) ; 正解(リスト)
 (define n-data         (length input-data-0))   ; データ数
 
-(define input-data     (apply f-array       ; 入力(行列(1 x n-data))
+(define input-data     (apply f-array           ; 入力(行列(1 x n-data))
                               0 1 0 n-data
                               ;; (入力の範囲を -1.0～1.0 に変換)
                               (map (lambda (x1) (/ (- x1 pi) pi)) input-data-0)))
-(define correct-data   (apply f-array       ; 正解(行列(1 x n-data))
+(define correct-data   (apply f-array           ; 正解(行列(1 x n-data))
                               0 1 0 n-data
                               correct-data-0))
 
@@ -103,18 +103,21 @@
   (f-array-ab+c! (slot-ref ml 'u) x (slot-ref ml 'w) (slot-ref ml 'b))
   (cond
    ((eq? ml-func 'sigmoid)
-    (f-array-sigmoid!      ; シグモイド関数 ( 1/(1+exp(-u)) )
+    ;; シグモイド関数 : y = 1 / (1 + exp(-u))
+    (f-array-sigmoid!
      (slot-ref ml 'y)
      (slot-ref ml 'u)))
    (else
-    (f-array-relu!         ; ReLU関数 ( (max 0 u) )
+    ;; ReLU関数 : y = max(0, u)
+    (f-array-relu!
      (slot-ref ml 'y)
      (slot-ref ml 'u))))
   )
 (define (middle-layer-backward ml grad-y)
   (cond
    ((eq? ml-func 'sigmoid)
-    (f-array-mul-elements! ; シグモイド関数の微分 ( grad-y*(1-y)*y )
+    ;; シグモイド関数の微分 : delta = grad-y * (1 - y) * y
+    (f-array-mul-elements!
      (slot-ref ml 'delta)
      (f-array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
      grad-y
@@ -123,7 +126,8 @@
      ;(f-array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
      (slot-ref ml 'y)))
    (else
-    (f-array-mul-elements! ; ReLU関数の微分 ( ステップ関数 )
+    ;; ReLU関数の微分 (ステップ関数) : delta = grad-y * (y > 0 ? 1 : 0)
+    (f-array-mul-elements!
      (slot-ref ml 'delta)
      grad-y
      (f-array-step! (slot-ref ml 'delta) (slot-ref ml 'y)))))
@@ -185,8 +189,8 @@
   (slot-set! ol 'x x)
   ;; u = x * w + b
   (f-array-ab+c! (slot-ref ol 'u) x (slot-ref ol 'w) (slot-ref ol 'b))
-  ;; y = u
-  (slot-set! ol 'y (slot-ref ol 'u)) ; 恒等関数
+  ;; 恒等関数 : y = u
+  (slot-set! ol 'y (slot-ref ol 'u))
   )
 (define (output-layer-backward ol t)
   (slot-set! ol 't t)

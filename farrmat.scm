@@ -6,7 +6,7 @@
 ;; ＜内容＞
 ;;   Gauche で、2次元の f64array を扱うためのモジュールです。
 ;;   gauche.array, eigenmat, blasmat モジュールよりも後に
-;;   use して使用することを想定しています。
+;;   読み込んで使用することを想定しています。
 ;;
 ;;   詳細については、以下のページを参照ください。
 ;;   https://github.com/Hamayama/farrmat
@@ -198,7 +198,7 @@
 ;; (戻り値は未定義)
 (define f-array-map! array-map!)
 
-;; 行列の生成(簡略版)(2次元のみ)(キャッシュ使用)
+;; 行列の生成(2次元のみ)(キャッシュ使用)
 (define (make-f-array ns ne ms me . maybe-init)
   (if use-f-array-cache
     (let1 key (s32vector ns ne ms me)
@@ -217,7 +217,7 @@
     (apply (with-module gauche.array %make-array-internal-sub)
            <f64array> (shape ns ne ms me) maybe-init)))
 
-;; 同じ shape の行列の生成(簡略版)(2次元のみ)
+;; 同じ shape の行列の生成(2次元のみ)
 (define (make-f-array-same-shape A . maybe-init)
   (check-array-rank A)
   (let ((ns (array-start A 0))
@@ -226,7 +226,7 @@
         (me (array-end   A 1)))
     (apply make-f-array ns ne ms me maybe-init)))
 
-;; 行列の初期化データ付き生成(簡略版)(2次元のみ)
+;; 行列の初期化データ付き生成(2次元のみ)
 (define (f-array ns ne ms me . inits)
   (rlet1 ar (make-f-array ns ne ms me 0)
     (f64vector-copy! (slot-ref ar 'backing-storage)
