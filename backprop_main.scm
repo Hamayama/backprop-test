@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-3-20 v2.20
+;; 2019-3-20 v2.30
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -28,7 +28,7 @@
 (use math.const)
 (use data.random)      ; random-data-seed,reals-normal$
 (use srfi-27)          ; random-source-randomize!,default-random-source
-(use farrmat)          ; 2次元の f64array を扱う
+(use f2arrmat)         ; 2次元の f64array を扱う
 
 ;; 乱数の初期化
 (set! (random-data-seed) (sys-time)) ; data.random (for reals-normal$)
@@ -43,11 +43,11 @@
 (define correct-data-0 (map %sin input-data-0)) ; 正解(リスト)
 (define n-data         (length input-data-0))   ; データ数
 
-(define input-data     (apply f-array           ; 入力(行列(1 x n-data))
+(define input-data     (apply f2-array          ; 入力(行列(1 x n-data))
                               0 1 0 n-data
                               ;; (入力の範囲を -1.0～1.0 に変換)
                               (map (lambda (x1) (/ (- x1 pi) pi)) input-data-0)))
-(define correct-data   (apply f-array           ; 正解(行列(1 x n-data))
+(define correct-data   (apply f2-array          ; 正解(行列(1 x n-data))
                               0 1 0 n-data
                               correct-data-0))
 
@@ -79,37 +79,37 @@
    (tw     :init-value #f) ; 計算用        (行列(サイズはwの転置))
    ))
 (define (middle-layer-init ml n-upper n)
-  (slot-set! ml 'w (apply f-array
+  (slot-set! ml 'w (apply f2-array
                           0 n-upper 0 n
                           (map (lambda (x1) (* wb-width x1))
                                (generator->list gen-normal (* n-upper n)))))
-  (slot-set! ml 'b (apply f-array
+  (slot-set! ml 'b (apply f2-array
                           0 1 0 n
                           (map (lambda (x1) (* wb-width x1))
                                (generator->list gen-normal n))))
-  (slot-set! ml 'x      (make-f-array 0 1 0 n-upper))
-  (slot-set! ml 'y      (make-f-array 0 1 0 n))
-  (slot-set! ml 'grad-w (make-f-array-same-shape (slot-ref ml 'w)))
-  (slot-set! ml 'grad-b (make-f-array-same-shape (slot-ref ml 'b)))
-  (slot-set! ml 'grad-x (make-f-array-same-shape (slot-ref ml 'x)))
-  (slot-set! ml 'u      (make-f-array-same-shape (slot-ref ml 'y)))
-  (slot-set! ml 'delta  (make-f-array-same-shape (slot-ref ml 'y)))
-  (slot-set! ml 'tx     (make-f-array-same-shape (f-array-transpose (slot-ref ml 'x))))
-  (slot-set! ml 'tw     (make-f-array-same-shape (f-array-transpose (slot-ref ml 'w))))
+  (slot-set! ml 'x      (make-f2-array 0 1 0 n-upper))
+  (slot-set! ml 'y      (make-f2-array 0 1 0 n))
+  (slot-set! ml 'grad-w (make-f2-array-same-shape (slot-ref ml 'w)))
+  (slot-set! ml 'grad-b (make-f2-array-same-shape (slot-ref ml 'b)))
+  (slot-set! ml 'grad-x (make-f2-array-same-shape (slot-ref ml 'x)))
+  (slot-set! ml 'u      (make-f2-array-same-shape (slot-ref ml 'y)))
+  (slot-set! ml 'delta  (make-f2-array-same-shape (slot-ref ml 'y)))
+  (slot-set! ml 'tx     (make-f2-array-same-shape (f2-array-transpose (slot-ref ml 'x))))
+  (slot-set! ml 'tw     (make-f2-array-same-shape (f2-array-transpose (slot-ref ml 'w))))
   )
 (define (middle-layer-forward ml x)
   (slot-set! ml 'x x)
   ;; u = x * w + b
-  (f-array-ab+c! (slot-ref ml 'u) x (slot-ref ml 'w) (slot-ref ml 'b))
+  (f2-array-ab+c! (slot-ref ml 'u) x (slot-ref ml 'w) (slot-ref ml 'b))
   (cond
    ((eq? ml-func 'sigmoid)
     ;; シグモイド関数 : y = 1 / (1 + exp(-u))
-    (f-array-sigmoid!
+    (f2-array-sigmoid!
      (slot-ref ml 'y)
      (slot-ref ml 'u)))
    (else
     ;; ReLU関数 : y = max(0, u)
-    (f-array-relu!
+    (f2-array-relu!
      (slot-ref ml 'y)
      (slot-ref ml 'u))))
   )
@@ -117,36 +117,36 @@
   (cond
    ((eq? ml-func 'sigmoid)
     ;; シグモイド関数の微分 : delta = grad-y * (1 - y) * y
-    (f-array-mul-elements!
+    (f2-array-mul-elements!
      (slot-ref ml 'delta)
-     (f-array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
+     (f2-array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
      grad-y
      -1
      ;; (破壊的変更の関係で前に移動)
-     ;(f-array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
+     ;(f2-array-sub-elements! (slot-ref ml 'delta) (slot-ref ml 'y) 1)
      (slot-ref ml 'y)))
    (else
     ;; ReLU関数の微分 (ステップ関数) : delta = grad-y * (y > 0 ? 1 : 0)
-    (f-array-mul-elements!
+    (f2-array-mul-elements!
      (slot-ref ml 'delta)
      grad-y
-     (f-array-step! (slot-ref ml 'delta) (slot-ref ml 'y)))))
+     (f2-array-step! (slot-ref ml 'delta) (slot-ref ml 'y)))))
   ;; grad-w = tx * delta
-  (f-array-mul! (slot-ref ml 'grad-w)
-                 (f-array-transpose! (slot-ref ml 'tx) (slot-ref ml 'x))
+  (f2-array-mul! (slot-ref ml 'grad-w)
+                 (f2-array-transpose! (slot-ref ml 'tx) (slot-ref ml 'x))
                  (slot-ref ml 'delta))
   ;; grad-b = delta
   (slot-set! ml 'grad-b (slot-ref ml 'delta))
   ;; grad-x = delta * tw
-  (f-array-mul! (slot-ref ml 'grad-x)
+  (f2-array-mul! (slot-ref ml 'grad-x)
                  (slot-ref ml 'delta)
-                 (f-array-transpose! (slot-ref ml 'tw) (slot-ref ml 'w)))
+                 (f2-array-transpose! (slot-ref ml 'tw) (slot-ref ml 'w)))
   )
 (define (middle-layer-update ml eta)
   ;; w -= eta * grad-w
-  (f-array-ra+b! (slot-ref ml 'w) (- eta) (slot-ref ml 'grad-w) (slot-ref ml 'w))
+  (f2-array-ra+b! (slot-ref ml 'w) (- eta) (slot-ref ml 'grad-w) (slot-ref ml 'w))
   ;; b -= eta * grad-b
-  (f-array-ra+b! (slot-ref ml 'b) (- eta) (slot-ref ml 'grad-b) (slot-ref ml 'b))
+  (f2-array-ra+b! (slot-ref ml 'b) (- eta) (slot-ref ml 'grad-b) (slot-ref ml 'b))
   )
 
 
@@ -166,52 +166,52 @@
    (t      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    ))
 (define (output-layer-init ol n-upper n)
-  (slot-set! ol 'w (apply f-array
+  (slot-set! ol 'w (apply f2-array
                           0 n-upper 0 n
                           (map (lambda (x1) (* wb-width x1))
                                (generator->list gen-normal (* n-upper n)))))
-  (slot-set! ol 'b (apply f-array
+  (slot-set! ol 'b (apply f2-array
                           0 1 0 n
                           (map (lambda (x1) (* wb-width x1))
                                (generator->list gen-normal n))))
-  (slot-set! ol 'x      (make-f-array 0 1 0 n-upper))
-  (slot-set! ol 'y      (make-f-array 0 1 0 n))
-  (slot-set! ol 'grad-w (make-f-array-same-shape (slot-ref ol 'w)))
-  (slot-set! ol 'grad-b (make-f-array-same-shape (slot-ref ol 'b)))
-  (slot-set! ol 'grad-x (make-f-array-same-shape (slot-ref ol 'x)))
-  (slot-set! ol 'u      (make-f-array-same-shape (slot-ref ol 'y)))
-  (slot-set! ol 'delta  (make-f-array-same-shape (slot-ref ol 'y)))
-  (slot-set! ol 'tx     (make-f-array-same-shape (f-array-transpose (slot-ref ol 'x))))
-  (slot-set! ol 'tw     (make-f-array-same-shape (f-array-transpose (slot-ref ol 'w))))
-  (slot-set! ol 't      (make-f-array-same-shape (slot-ref ol 'y)))
+  (slot-set! ol 'x      (make-f2-array 0 1 0 n-upper))
+  (slot-set! ol 'y      (make-f2-array 0 1 0 n))
+  (slot-set! ol 'grad-w (make-f2-array-same-shape (slot-ref ol 'w)))
+  (slot-set! ol 'grad-b (make-f2-array-same-shape (slot-ref ol 'b)))
+  (slot-set! ol 'grad-x (make-f2-array-same-shape (slot-ref ol 'x)))
+  (slot-set! ol 'u      (make-f2-array-same-shape (slot-ref ol 'y)))
+  (slot-set! ol 'delta  (make-f2-array-same-shape (slot-ref ol 'y)))
+  (slot-set! ol 'tx     (make-f2-array-same-shape (f2-array-transpose (slot-ref ol 'x))))
+  (slot-set! ol 'tw     (make-f2-array-same-shape (f2-array-transpose (slot-ref ol 'w))))
+  (slot-set! ol 't      (make-f2-array-same-shape (slot-ref ol 'y)))
   )
 (define (output-layer-forward ol x)
   (slot-set! ol 'x x)
   ;; u = x * w + b
-  (f-array-ab+c! (slot-ref ol 'u) x (slot-ref ol 'w) (slot-ref ol 'b))
+  (f2-array-ab+c! (slot-ref ol 'u) x (slot-ref ol 'w) (slot-ref ol 'b))
   ;; 恒等関数 : y = u
   (slot-set! ol 'y (slot-ref ol 'u))
   )
 (define (output-layer-backward ol t)
   (slot-set! ol 't t)
   ;; delta = y - t
-  (f-array-sub-elements! (slot-ref ol 'delta) (slot-ref ol 'y) t)
+  (f2-array-sub-elements! (slot-ref ol 'delta) (slot-ref ol 'y) t)
   ;; grad-w = tx * delta
-  (f-array-mul! (slot-ref ol 'grad-w)
-                 (f-array-transpose! (slot-ref ol 'tx) (slot-ref ol 'x))
+  (f2-array-mul! (slot-ref ol 'grad-w)
+                 (f2-array-transpose! (slot-ref ol 'tx) (slot-ref ol 'x))
                  (slot-ref ol 'delta))
   ;; grad-b = delta
   (slot-set! ol 'grad-b (slot-ref ol 'delta))
   ;; grad-x = delta * tw
-  (f-array-mul! (slot-ref ol 'grad-x)
+  (f2-array-mul! (slot-ref ol 'grad-x)
                  (slot-ref ol 'delta)
-                 (f-array-transpose! (slot-ref ol 'tw) (slot-ref ol 'w)))
+                 (f2-array-transpose! (slot-ref ol 'tw) (slot-ref ol 'w)))
   )
 (define (output-layer-update ol eta)
   ;; w -= eta * grad-w
-  (f-array-ra+b! (slot-ref ol 'w) (- eta) (slot-ref ol 'grad-w) (slot-ref ol 'w))
+  (f2-array-ra+b! (slot-ref ol 'w) (- eta) (slot-ref ol 'grad-w) (slot-ref ol 'w))
   ;; b -= eta * grad-b
-  (f-array-ra+b! (slot-ref ol 'b) (- eta) (slot-ref ol 'grad-b) (slot-ref ol 'b))
+  (f2-array-ra+b! (slot-ref ol 'b) (- eta) (slot-ref ol 'grad-b) (slot-ref ol 'b))
   )
 
 
@@ -245,11 +245,11 @@
           (total-error  0)
           (result       '()))
       (dolist (idx index-random)
-        (let ((x (f-array-ref input-data   0 idx))
-              (t (f-array-ref correct-data 0 idx))
+        (let ((x (f2-array-ref input-data   0 idx))
+              (t (f2-array-ref correct-data 0 idx))
               (y #f))
           ;; 順伝播
-          (f-array-set! (slot-ref (vector-ref mls 0) 'x) 0 0 x)
+          (f2-array-set! (slot-ref (vector-ref mls 0) 'x) 0 0 x)
           (for-each-with-index
            (lambda (i ml)
              (if (= i 0)
@@ -258,7 +258,7 @@
            mls)
           (output-layer-forward  ol (slot-ref (vector-ref mls (- ml-num 1)) 'y))
           ;; 逆伝播 (ouput -> middle の順なので注意)
-          (f-array-set! (slot-ref ol 't) 0 0 t)
+          (f2-array-set! (slot-ref ol 't) 0 0 t)
           (output-layer-backward ol (slot-ref ol 't))
           (for-each-with-index
            (lambda (i ml)
@@ -271,7 +271,7 @@
           (output-layer-update ol eta)
           ;; 結果の収集
           (when (= (modulo i interval) 0)
-            (set! y (f-array-ref (slot-ref ol 'y) 0 0))
+            (set! y (f2-array-ref (slot-ref ol 'y) 0 0))
             (inc! total-error (* 0.5 (- y t) (- y t)))
             (push! result (cons x y)))
           ))

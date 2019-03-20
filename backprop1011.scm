@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1011.scm
-;; 2019-3-20 v2.20
+;; 2019-3-20 v2.30
 ;;
 ;; ＜内容＞
 ;;   パラメータ設定ファイル
@@ -13,10 +13,10 @@
 (define correct-data-0 (map %sin input-data-0)) ; 正解(リスト)
 (define n-data         (length input-data-0))   ; データ数
 
-(define input-data     (apply f-array           ; 入力(行列(1 x n-data))
+(define input-data     (apply f2-array          ; 入力(行列(1 x n-data))
                               0 1 0 n-data
                               input-data-0))
-(define correct-data   (apply f-array           ; 正解(行列(1 x n-data))
+(define correct-data   (apply f2-array          ; 正解(行列(1 x n-data))
                               0 1 0 n-data
                               correct-data-0))
 
