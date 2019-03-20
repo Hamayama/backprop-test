@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1091.scm
-;; 2019-3-13 v2.01
+;; 2019-3-20 v2.20
 ;;
 ;; ＜内容＞
 ;;   パラメータ設定ファイル
@@ -15,11 +15,11 @@
                         input-data-0))
 (define n-data         (length input-data-0))   ; データ数
 
-(define input-data     (apply f64array-simple   ; 入力(行列(1 x n-data))
+(define input-data     (apply f-array           ; 入力(行列(1 x n-data))
                               0 1 0 n-data
                               ;; (入力の範囲を -1.0～1.0 に変換)
                               (map (lambda (x1) (/ (- x1 pi) pi)) input-data-0)))
-(define correct-data   (apply f64array-simple   ; 正解(行列(1 x n-data))
+(define correct-data   (apply f-array           ; 正解(行列(1 x n-data))
                               0 1 0 n-data
                               correct-data-0))
 
