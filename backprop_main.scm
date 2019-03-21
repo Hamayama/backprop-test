@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-3-20 v2.30
+;; 2019-3-21 v2.32
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -75,8 +75,6 @@
    (grad-x :init-value #f) ; 入力の勾配    (行列(サイズはxと同じ))
    (u      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    (delta  :init-value #f) ; 計算用        (行列(サイズはyと同じ))
-   (tx     :init-value #f) ; 計算用        (行列(サイズはxの転置))
-   (tw     :init-value #f) ; 計算用        (行列(サイズはwの転置))
    ))
 (define (middle-layer-init ml n-upper n)
   (slot-set! ml 'w (apply f2-array
@@ -94,13 +92,12 @@
   (slot-set! ml 'grad-x (make-f2-array-same-shape (slot-ref ml 'x)))
   (slot-set! ml 'u      (make-f2-array-same-shape (slot-ref ml 'y)))
   (slot-set! ml 'delta  (make-f2-array-same-shape (slot-ref ml 'y)))
-  (slot-set! ml 'tx     (make-f2-array-same-shape (f2-array-transpose (slot-ref ml 'x))))
-  (slot-set! ml 'tw     (make-f2-array-same-shape (f2-array-transpose (slot-ref ml 'w))))
   )
 (define (middle-layer-forward ml x)
   (slot-set! ml 'x x)
   ;; u = x * w + b
-  (f2-array-ab+c! (slot-ref ml 'u) x (slot-ref ml 'w) (slot-ref ml 'b))
+  (f2-array-copy!   (slot-ref ml 'u) (slot-ref ml 'b))
+  (f2-array-ab+c! x (slot-ref ml 'w) (slot-ref ml 'u) 1.0 1.0 #f #f)
   (cond
    ((eq? ml-func 'sigmoid)
     ;; シグモイド関数 : y = 1 / (1 + exp(-u))
@@ -132,21 +129,19 @@
      grad-y
      (f2-array-step! (slot-ref ml 'delta) (slot-ref ml 'y)))))
   ;; grad-w = tx * delta
-  (f2-array-mul! (slot-ref ml 'grad-w)
-                 (f2-array-transpose! (slot-ref ml 'tx) (slot-ref ml 'x))
-                 (slot-ref ml 'delta))
+  (f2-array-fill! (slot-ref ml 'grad-w) 0)
+  (f2-array-ab+c! (slot-ref ml 'x) (slot-ref ml 'delta) (slot-ref ml 'grad-w) 1.0 1.0 #t #f)
   ;; grad-b = delta
   (slot-set! ml 'grad-b (slot-ref ml 'delta))
   ;; grad-x = delta * tw
-  (f2-array-mul! (slot-ref ml 'grad-x)
-                 (slot-ref ml 'delta)
-                 (f2-array-transpose! (slot-ref ml 'tw) (slot-ref ml 'w)))
+  (f2-array-fill! (slot-ref ml 'grad-x) 0)
+  (f2-array-ab+c! (slot-ref ml 'delta) (slot-ref ml 'w) (slot-ref ml 'grad-x) 1.0 1.0 #f #t)
   )
 (define (middle-layer-update ml eta)
   ;; w -= eta * grad-w
-  (f2-array-ra+b! (slot-ref ml 'w) (- eta) (slot-ref ml 'grad-w) (slot-ref ml 'w))
+  (f2-array-ra+b! (- eta) (slot-ref ml 'grad-w) (slot-ref ml 'w))
   ;; b -= eta * grad-b
-  (f2-array-ra+b! (slot-ref ml 'b) (- eta) (slot-ref ml 'grad-b) (slot-ref ml 'b))
+  (f2-array-ra+b! (- eta) (slot-ref ml 'grad-b) (slot-ref ml 'b))
   )
 
 
@@ -161,8 +156,6 @@
    (grad-x :init-value #f) ; 入力の勾配    (行列(サイズはxと同じ))
    (u      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    (delta  :init-value #f) ; 計算用        (行列(サイズはyと同じ))
-   (tx     :init-value #f) ; 計算用        (行列(サイズはxの転置))
-   (tw     :init-value #f) ; 計算用        (行列(サイズはwの転置))
    (t      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    ))
 (define (output-layer-init ol n-upper n)
@@ -181,14 +174,13 @@
   (slot-set! ol 'grad-x (make-f2-array-same-shape (slot-ref ol 'x)))
   (slot-set! ol 'u      (make-f2-array-same-shape (slot-ref ol 'y)))
   (slot-set! ol 'delta  (make-f2-array-same-shape (slot-ref ol 'y)))
-  (slot-set! ol 'tx     (make-f2-array-same-shape (f2-array-transpose (slot-ref ol 'x))))
-  (slot-set! ol 'tw     (make-f2-array-same-shape (f2-array-transpose (slot-ref ol 'w))))
   (slot-set! ol 't      (make-f2-array-same-shape (slot-ref ol 'y)))
   )
 (define (output-layer-forward ol x)
   (slot-set! ol 'x x)
   ;; u = x * w + b
-  (f2-array-ab+c! (slot-ref ol 'u) x (slot-ref ol 'w) (slot-ref ol 'b))
+  (f2-array-copy!   (slot-ref ol 'u) (slot-ref ol 'b))
+  (f2-array-ab+c! x (slot-ref ol 'w) (slot-ref ol 'u) 1.0 1.0 #f #f)
   ;; 恒等関数 : y = u
   (slot-set! ol 'y (slot-ref ol 'u))
   )
@@ -197,21 +189,19 @@
   ;; delta = y - t
   (f2-array-sub-elements! (slot-ref ol 'delta) (slot-ref ol 'y) t)
   ;; grad-w = tx * delta
-  (f2-array-mul! (slot-ref ol 'grad-w)
-                 (f2-array-transpose! (slot-ref ol 'tx) (slot-ref ol 'x))
-                 (slot-ref ol 'delta))
+  (f2-array-fill! (slot-ref ol 'grad-w) 0)
+  (f2-array-ab+c! (slot-ref ol 'x) (slot-ref ol 'delta) (slot-ref ol 'grad-w) 1.0 1.0 #t #f)
   ;; grad-b = delta
   (slot-set! ol 'grad-b (slot-ref ol 'delta))
   ;; grad-x = delta * tw
-  (f2-array-mul! (slot-ref ol 'grad-x)
-                 (slot-ref ol 'delta)
-                 (f2-array-transpose! (slot-ref ol 'tw) (slot-ref ol 'w)))
+  (f2-array-fill! (slot-ref ol 'grad-x) 0)
+  (f2-array-ab+c! (slot-ref ol 'delta) (slot-ref ol 'w) (slot-ref ol 'grad-x) 1.0 1.0 #f #t)
   )
 (define (output-layer-update ol eta)
   ;; w -= eta * grad-w
-  (f2-array-ra+b! (slot-ref ol 'w) (- eta) (slot-ref ol 'grad-w) (slot-ref ol 'w))
+  (f2-array-ra+b! (- eta) (slot-ref ol 'grad-w) (slot-ref ol 'w))
   ;; b -= eta * grad-b
-  (f2-array-ra+b! (slot-ref ol 'b) (- eta) (slot-ref ol 'grad-b) (slot-ref ol 'b))
+  (f2-array-ra+b! (- eta) (slot-ref ol 'grad-b) (slot-ref ol 'b))
   )
 
 

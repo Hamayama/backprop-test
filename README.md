@@ -97,6 +97,8 @@
 - 2019-3-20  v2.20 farrmat.scmを使うように変更(手続き名見直し等)
 - 2019-3-20  v2.30 f2arrmat.scmを使うように変更(手続き名見直し等)
 - 2019-3-21  v2.31 f2arrmat.scmをv1.01に更新(コメント変更のみ)
+- 2019-3-21  v2.32 backprop_main.scmを変更(blasmat用に最適化)  
+  f2arrmat.scmをv1.02に更新(blasmat関連の変更)
 
 
 (2019-3-21)
