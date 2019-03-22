@@ -99,6 +99,7 @@
 - 2019-3-21  v2.31 f2arrmat.scmをv1.01に更新(コメント変更のみ)
 - 2019-3-21  v2.32 backprop_main.scmを変更(blasmat用に最適化)  
   f2arrmat.scmをv1.02に更新(blasmat関連の変更)
+- 2019-3-23  v2.33 f2arrmat.scmをv1.04に更新(手続きの追加等)
 
 
-(2019-3-21)
+(2019-3-23)
