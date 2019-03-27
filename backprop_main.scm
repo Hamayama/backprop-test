@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-3-27 v2.38
+;; 2019-3-27 v2.40
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -102,14 +102,10 @@
   (cond
    ((eq? ml-func 'sigmoid)
     ;; シグモイド関数 : y = 1 / (1 + exp(-u))
-    (f2-array-sigmoid!
-     (slot-ref ml 'y)
-     (slot-ref ml 'u)))
+    (f2-array-sigmoid! (slot-ref ml 'y) (slot-ref ml 'u)))
    (else
     ;; ReLU関数 : y = max(0, u)
-    (f2-array-relu!
-     (slot-ref ml 'y)
-     (slot-ref ml 'u))))
+    (f2-array-relu!    (slot-ref ml 'y) (slot-ref ml 'u))))
   )
 (define (middle-layer-backward ml grad-y)
   (cond
