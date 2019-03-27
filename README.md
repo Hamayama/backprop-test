@@ -113,6 +113,7 @@
   f2arrmat.scmをv1.07に更新(演算処理見直し等)
 - 2019-3-27  v2.39 backprop1201.scmを追加(方形波)
 - 2019-3-27  v2.40 backprop_main.scmを変更(書式整形のみ)
+- 2019-3-28  v2.41 f2arrmat.scmをv1.08に更新(gauche.versionのuseを追加)
 
 
-(2019-3-27)
+(2019-3-28)
