@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-3-21 v2.32
+;; 2019-3-27 v2.37
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -9,9 +9,8 @@
 ;;   「はじめてのディープラーニング」 我妻幸長 SB Creative 2018
 ;;     (「5.9 バックプロパゲーションの実装 -回帰-」)
 ;;
-;;   ただし、高速化のために計算用の行列を追加しており、
-;;   そのためオリジナルのプログラムよりも若干複雑になっています。
-;;   また、中間層の数の設定と、活性化関数 (シグモイド / ReLU) の選択を可能にしています。
+;;   ただし、高速化のために計算用の行列を追加したり、複合演算命令を使用したりしています。
+;;   また、中間層の数の設定と、活性化関数 (シグモイド / ReLU) の選択を可能としました。
 ;;
 ;;   詳細については、以下のページを参照ください。
 ;;   https://github.com/Hamayama/backprop-test
@@ -128,12 +127,12 @@
      (slot-ref ml 'delta)
      grad-y
      (f2-array-step! (slot-ref ml 'delta) (slot-ref ml 'y)))))
-  ;; grad-w = tx * delta
+  ;; grad-w = tx * delta : (ただし tx は x の転置行列)
   (f2-array-fill! (slot-ref ml 'grad-w) 0)
   (f2-array-ab+c! (slot-ref ml 'x) (slot-ref ml 'delta) (slot-ref ml 'grad-w) 1.0 1.0 #t #f)
   ;; grad-b = delta
   (slot-set! ml 'grad-b (slot-ref ml 'delta))
-  ;; grad-x = delta * tw
+  ;; grad-x = delta * tw : (ただし tw は w の転置行列)
   (f2-array-fill! (slot-ref ml 'grad-x) 0)
   (f2-array-ab+c! (slot-ref ml 'delta) (slot-ref ml 'w) (slot-ref ml 'grad-x) 1.0 1.0 #f #t)
   )
@@ -188,12 +187,12 @@
   (slot-set! ol 't t)
   ;; delta = y - t
   (f2-array-sub-elements! (slot-ref ol 'delta) (slot-ref ol 'y) t)
-  ;; grad-w = tx * delta
+  ;; grad-w = tx * delta : (ただし tx は x の転置行列)
   (f2-array-fill! (slot-ref ol 'grad-w) 0)
   (f2-array-ab+c! (slot-ref ol 'x) (slot-ref ol 'delta) (slot-ref ol 'grad-w) 1.0 1.0 #t #f)
   ;; grad-b = delta
   (slot-set! ol 'grad-b (slot-ref ol 'delta))
-  ;; grad-x = delta * tw
+  ;; grad-x = delta * tw : (ただし tw は w の転置行列)
   (f2-array-fill! (slot-ref ol 'grad-x) 0)
   (f2-array-ab+c! (slot-ref ol 'delta) (slot-ref ol 'w) (slot-ref ol 'grad-x) 1.0 1.0 #f #t)
   )
@@ -208,8 +207,8 @@
 ;; メイン処理
 (define (main args)
   (define paramfile (list-ref args 1 #f))
-  (define mls       #f) ; 中間層(ベクタ)
-  (define mls-rev   #f) ; 中間層の逆順(ベクタ)
+  (define mls       #f) ; 中間層の配列(ベクタ)
+  (define mls-rev   #f) ; 中間層の逆順の配列(ベクタ)
   (define ol        #f) ; 出力層
 
   ;; パラメータ設定ファイルのロード
