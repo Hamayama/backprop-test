@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-3-30 v2.44
+;; 2019-3-30 v2.45
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -55,12 +55,43 @@
 (define n-out          1)     ; 出力層のニューロン数
 
 (define ml-num         1)     ; 中間層の数
-(define ml-func        'relu) ; 中間層の活性化関数(sigmoid / relu)
+(define ml-func        'relu) ; 中間層の活性化関数の選択(sigmoid / relu)
 
 (define wb-width       0.01)  ; 重みとバイアスの幅
 (define eta            0.1)   ; 学習係数
 (define epoch          2001)  ; エポック数
 (define interval       200)   ; 経過の表示間隔
+
+
+;; 中間層の活性化関数の生成
+(define ml-act-func  #f) ; 中間層の活性化関数
+(define ml-diff-func #f) ; 中間層の活性化関数の微分 * grad-y
+(define (ml-func-init)
+  (set! ml-act-func
+        (ecase ml-func
+          ((sigmoid)
+           ;; シグモイド関数 : y = 1 / (1 + exp(-u))
+           ;(lambda (y u) (f2-array-sigmoid! y u)
+           f2-array-sigmoid!)
+          ((relu)
+           ;; ReLU関数 : y = max(0, u)
+           ;(lambda (y u) (f2-array-relu! y u)
+           f2-array-relu!)
+          ))
+  (set! ml-diff-func
+        (ecase ml-func
+          ((sigmoid)
+           ;; シグモイド関数の微分 * grad-y
+           (lambda (delta delta2 grad-y y)
+             ;; delta = grad-y * (1 - y) * y : (delta2 は途中計算用)
+             (f2-array-mul-elements! delta grad-y -1 (f2-array-sub-elements! delta2 y 1) y)))
+          ((relu)
+           ;; ReLU関数の微分 (ステップ関数) * grad-y
+           (lambda (delta delta2 grad-y y)
+             ;; delta = grad-y * (y > 0 ? 1 : 0) : (delta2 は途中計算用)
+             (f2-array-mul-elements! delta grad-y (f2-array-step! delta2 y))))
+          ))
+  )
 
 
 ;; 中間層クラス
@@ -99,30 +130,12 @@
   ;; u = x * w + b
   (f2-array-copy!   (slot-ref ml 'u) (slot-ref ml 'b))
   (f2-array-ab+c! x (slot-ref ml 'w) (slot-ref ml 'u) 1.0 1.0 #f #f)
-  (cond
-   ((eq? ml-func 'sigmoid)
-    ;; シグモイド関数 : y = 1 / (1 + exp(-u))
-    (f2-array-sigmoid! (slot-ref ml 'y) (slot-ref ml 'u)))
-   (else
-    ;; ReLU関数 : y = max(0, u)
-    (f2-array-relu!    (slot-ref ml 'y) (slot-ref ml 'u))))
+  ;; y = ml-act-func(u)
+  (ml-act-func      (slot-ref ml 'y) (slot-ref ml 'u))
   )
 (define (middle-layer-backward ml grad-y)
-  (cond
-   ((eq? ml-func 'sigmoid)
-    ;; シグモイド関数の微分 : delta = grad-y * (1 - y) * y
-    (f2-array-mul-elements!
-     (slot-ref ml 'delta)
-     grad-y
-     -1
-     (f2-array-sub-elements! (slot-ref ml 'delta2) (slot-ref ml 'y) 1)
-     (slot-ref ml 'y)))
-   (else
-    ;; ReLU関数の微分 (ステップ関数) : delta = grad-y * (y > 0 ? 1 : 0)
-    (f2-array-mul-elements!
-     (slot-ref ml 'delta)
-     grad-y
-     (f2-array-step! (slot-ref ml 'delta2) (slot-ref ml 'y)))))
+  ;; delta = ml-diff-func(delta2, grad-y, y) : (delta2 は途中計算用)
+  (ml-diff-func   (slot-ref ml 'delta) (slot-ref ml 'delta2) grad-y (slot-ref ml 'y))
   ;; grad-w = tx * delta : (ただし tx は x の転置行列)
   (f2-array-ab+c! (slot-ref ml 'x) (slot-ref ml 'delta) (slot-ref ml 'grad-w) 1.0 0.0 #t #f)
   ;; grad-b = delta
@@ -219,6 +232,7 @@
        (middle-layer-init ml n-mid n-mid)))
    mls)
   (output-layer-init ol n-mid n-out)
+  (ml-func-init)
 
   ;; 学習
   (dotimes (i epoch)
