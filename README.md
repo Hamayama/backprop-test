@@ -116,6 +116,7 @@
 - 2019-3-28  v2.41 f2arrmat.scmをv1.08に更新(gauche.versionのuseを追加)
 - 2019-3-28  v2.42 backprop_main.scmを変更(コメント変更のみ)
 - 2019-3-30  v2.43 backprop_main.scmを変更(活性化関数をインライン化)
+- 2019-3-30  v2.44 backprop_main.scmを変更(設定が無効になったのでv2.42に戻した)
 
 
 (2019-3-30)
