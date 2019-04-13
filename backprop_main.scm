@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-3-30 v2.45
+;; 2019-4-13 v2.47
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -10,7 +10,7 @@
 ;;     (「5.9 バックプロパゲーションの実装 -回帰-」)
 ;;
 ;;   ただし、高速化のために、計算用の行列の追加や、複合演算命令への変更を行っています。
-;;   また、中間層の数の設定と、活性化関数 (シグモイド / ReLU) の選択を可能にしています。
+;;   また、中間層の数の設定と、活性化関数 (シグモイド / ReLU / tanh) の選択を可能にしています。
 ;;
 ;;   詳細については、以下のページを参照ください。
 ;;   https://github.com/Hamayama/backprop-test
@@ -51,11 +51,11 @@
                               correct-data-0))
 
 (define n-in           1)     ; 入力層のニューロン数
-(define n-mid          20)    ; 中間層のニューロン数
+(define n-mid          3)     ; 中間層のニューロン数
 (define n-out          1)     ; 出力層のニューロン数
 
 (define ml-num         1)     ; 中間層の数
-(define ml-func        'relu) ; 中間層の活性化関数の選択(sigmoid / relu)
+(define ml-func        'tanh) ; 中間層の活性化関数の選択(sigmoid / relu / tanh)
 
 (define wb-width       0.01)  ; 重みとバイアスの幅
 (define eta            0.1)   ; 学習係数
@@ -77,6 +77,10 @@
            ;; ReLU関数 : y = max(0, u)
            ;(lambda (y u) (f2-array-relu! y u)
            f2-array-relu!)
+          ((tanh)
+           ;; tanh関数 : y = tanh(u)
+           ;(lambda (y u) (f2-array-tanh! y u)
+           f2-array-tanh!)
           ))
   (set! ml-diff-func
         (ecase ml-func
@@ -90,6 +94,13 @@
            (lambda (delta delta2 grad-y y)
              ;; delta = grad-y * (y > 0 ? 1 : 0) : (delta2 は途中計算用)
              (f2-array-mul-elements! delta grad-y (f2-array-step! delta2 y))))
+          ((tanh)
+           ;; tanh関数の微分 * grad-y
+           (lambda (delta delta2 grad-y y)
+             ;; delta = grad-y * (1 - y * y) : (delta2 は途中計算用)
+             (f2-array-mul-elements!
+              delta grad-y -1
+              (f2-array-sub-elements! delta2 (f2-array-pow! delta2 y 2) 1))))
           ))
   )
 
