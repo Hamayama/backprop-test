@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-4-13 v2.47
+;; 2019-4-20 v2.50
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -34,6 +34,10 @@
 (random-source-randomize! default-random-source) ; srfi-27 (for shuffle)
 ;; 正規分布の乱数ジェネレータ
 (define gen-normal (reals-normal$))
+;; データ(リスト)の範囲を変換
+(define (range-conv data minx1 maxx1 minx2 maxx2)
+  (map (lambda (x1) (+ minx2 (/. (* (- x1 minx1) (- maxx2 minx2)) (- maxx1 minx1))))
+       data))
 
 
 (define outfile        "backprop_result.txt")   ; 出力ファイル名
@@ -45,7 +49,7 @@
 (define input-data     (apply f2-array          ; 入力(行列(1 x n-data))
                               0 1 0 n-data
                               ;; (入力の範囲を -1.0～1.0 に変換)
-                              (map (lambda (x1) (/ (- x1 pi) pi)) input-data-0)))
+                              (range-conv input-data-0 0 2pi -1.0 1.0)))
 (define correct-data   (apply f2-array          ; 正解(行列(1 x n-data))
                               0 1 0 n-data
                               correct-data-0))
@@ -65,42 +69,38 @@
 
 ;; 中間層の活性化関数の生成
 (define ml-act-func  #f) ; 中間層の活性化関数
-(define ml-diff-func #f) ; 中間層の活性化関数の微分 * grad-y
+(define ml-diff-func #f) ; 中間層の活性化関数の微分
 (define (ml-func-init)
   (set! ml-act-func
         (ecase ml-func
           ((sigmoid)
            ;; シグモイド関数 : y = 1 / (1 + exp(-u))
-           ;(lambda (y u) (f2-array-sigmoid! y u)
+           ;(lambda (y u) (f2-array-sigmoid! y u)))
            f2-array-sigmoid!)
           ((relu)
            ;; ReLU関数 : y = max(0, u)
-           ;(lambda (y u) (f2-array-relu! y u)
+           ;(lambda (y u) (f2-array-relu! y u)))
            f2-array-relu!)
           ((tanh)
            ;; tanh関数 : y = tanh(u)
-           ;(lambda (y u) (f2-array-tanh! y u)
+           ;(lambda (y u) (f2-array-tanh! y u)))
            f2-array-tanh!)
           ))
   (set! ml-diff-func
         (ecase ml-func
           ((sigmoid)
-           ;; シグモイド関数の微分 * grad-y
-           (lambda (delta delta2 grad-y y)
-             ;; delta = grad-y * (1 - y) * y : (delta2 は途中計算用)
-             (f2-array-mul-elements! delta grad-y -1 (f2-array-sub-elements! delta2 y 1) y)))
+           ;; シグモイド関数の微分 : delta = (1 - y) * y
+           (lambda (delta y)
+             (f2-array-mul-elements! delta (f2-array-sub-elements! delta y 1) -1 y)))
           ((relu)
-           ;; ReLU関数の微分 (ステップ関数) * grad-y
-           (lambda (delta delta2 grad-y y)
-             ;; delta = grad-y * (y > 0 ? 1 : 0) : (delta2 は途中計算用)
-             (f2-array-mul-elements! delta grad-y (f2-array-step! delta2 y))))
+           ;; ReLU関数の微分 (ステップ関数) : delta = (y > 0 ? 1 : 0)
+           ;(lambda (delta y) (f2-array-step! delta y)))
+           f2-array-step!)
           ((tanh)
-           ;; tanh関数の微分 * grad-y
-           (lambda (delta delta2 grad-y y)
-             ;; delta = grad-y * (1 - y * y) : (delta2 は途中計算用)
+           ;; tanh関数の微分 : delta = (1 - y * y)
+           (lambda (delta y)
              (f2-array-mul-elements!
-              delta grad-y -1
-              (f2-array-sub-elements! delta2 (f2-array-pow! delta2 y 2) 1))))
+              delta (f2-array-sub-elements! delta (f2-array-pow! delta y 2) 1) -1)))
           ))
   )
 
@@ -116,7 +116,6 @@
    (grad-x :init-value #f) ; 入力の勾配    (行列(サイズはxと同じ))
    (u      :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    (delta  :init-value #f) ; 計算用        (行列(サイズはyと同じ))
-   (delta2 :init-value #f) ; 計算用        (行列(サイズはyと同じ))
    ))
 (define (middle-layer-init ml n-upper n)
   (slot-set! ml 'w (apply f2-array
@@ -134,7 +133,6 @@
   (slot-set! ml 'grad-x (make-f2-array-same-shape (slot-ref ml 'x)))
   (slot-set! ml 'u      (make-f2-array-same-shape (slot-ref ml 'y)))
   (slot-set! ml 'delta  (make-f2-array-same-shape (slot-ref ml 'y)))
-  (slot-set! ml 'delta2 (make-f2-array-same-shape (slot-ref ml 'y)))
   )
 (define (middle-layer-forward ml x)
   (slot-set! ml 'x x)
@@ -145,8 +143,9 @@
   (ml-act-func      (slot-ref ml 'y) (slot-ref ml 'u))
   )
 (define (middle-layer-backward ml grad-y)
-  ;; delta = ml-diff-func(delta2, grad-y, y) : (delta2 は途中計算用)
-  (ml-diff-func   (slot-ref ml 'delta) (slot-ref ml 'delta2) grad-y (slot-ref ml 'y))
+  ;; delta = grad-y * ml-diff-func(y)
+  (f2-array-mul-elements!
+   (slot-ref ml 'delta) grad-y (ml-diff-func (slot-ref ml 'delta) (slot-ref ml 'y)))
   ;; grad-w = tx * delta : (ただし tx は x の転置行列)
   (f2-array-ab+c! (slot-ref ml 'x) (slot-ref ml 'delta) (slot-ref ml 'grad-w) 1.0 0.0 #t #f)
   ;; grad-b = delta
