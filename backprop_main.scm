@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-4-20 v2.50
+;; 2019-4-20 v2.51
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -34,7 +34,7 @@
 (random-source-randomize! default-random-source) ; srfi-27 (for shuffle)
 ;; 正規分布の乱数ジェネレータ
 (define gen-normal (reals-normal$))
-;; データ(リスト)の範囲を変換
+;; データ(リスト)の範囲変換 (minx1～maxx1 を minx2～maxx2 に変換する)
 (define (range-conv data minx1 maxx1 minx2 maxx2)
   (map (lambda (x1) (+ minx2 (/. (* (- x1 minx1) (- maxx2 minx2)) (- maxx1 minx1))))
        data))
@@ -97,7 +97,7 @@
            ;(lambda (delta y) (f2-array-step! delta y)))
            f2-array-step!)
           ((tanh)
-           ;; tanh関数の微分 : delta = (1 - y * y)
+           ;; tanh関数の微分 : delta = 1 - y * y
            (lambda (delta y)
              (f2-array-mul-elements!
               delta (f2-array-sub-elements! delta (f2-array-pow! delta y 2) 1) -1)))

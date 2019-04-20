@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop1081.scm
-;; 2019-4-20 v2.50
+;; 2019-4-20 v2.51
 ;;
 ;; ＜内容＞
 ;;   パラメータ設定ファイル
@@ -24,14 +24,14 @@
                               correct-data-0))
 
 (define n-in           1)     ; 入力層のニューロン数
-(define n-mid          50)    ; 中間層のニューロン数
+(define n-mid          10)    ; 中間層のニューロン数
 (define n-out          1)     ; 出力層のニューロン数
 
 (define ml-num         2)     ; 中間層の数
 (define ml-func        'relu) ; 中間層の活性化関数の選択(sigmoid / relu / tanh)
 
 (define wb-width       0.01)  ; 重みとバイアスの幅
-(define eta            0.1)   ; 学習係数
+(define eta            0.05)  ; 学習係数
 (define epoch          4001)  ; エポック数
 (define interval       200)   ; 経過の表示間隔
 
