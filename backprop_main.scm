@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-6-17 v2.52
+;; 2019-6-18 v2.53
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -284,7 +284,8 @@
       (when (= (modulo i interval) 0)
         ;(print (sort result < car))
         (print "Epoch: " i " / " epoch)
-        (print "Error: " (/. total-error n-data)))
+        (print "Error: " (/. total-error n-data))
+        (flush))
       ;; 最終結果((x,y)の組のデータ)の出力
       (when (= i (- epoch 1))
         (with-output-to-file outfile
