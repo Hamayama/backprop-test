@@ -73,8 +73,9 @@
 - OS
   - Windows 8.1 (64bit)
 - 環境
-  - MSYS2/MinGW-w64 (64bit/32bit) (gcc version 7.3.0 (Rev2, Built by MSYS2 project))
+  - MSYS2/MinGW-w64 (64bit/32bit) (gcc version 8.3.0 (Rev2, Built by MSYS2 project))
 - 言語
+  - Gauche v0.9.8
   - Gauche v0.9.7
 
 ## 履歴
@@ -129,6 +130,7 @@
 - 2019-4-18  v2.49 f2arrmat.scmをv1.14に更新(v1.13の変更を元に戻した)
 - 2019-4-20  v2.50 backprop_main.scmを変更(入力の正規化を関数化。活性化関数の微分の処理見直し)
 - 2019-4-20  v2.51 backprop1061/1081/1091.scmを変更(パラメータを調整)
+- 2019-6-17  v2.52 backprop_main.scmを変更(一部処理見直し)
 
 
-(2019-4-20)
+(2019-6-17)

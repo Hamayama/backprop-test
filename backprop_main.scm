@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; backprop_main.scm
-;; 2019-4-20 v2.51
+;; 2019-6-17 v2.52
 ;;
 ;; ＜内容＞
 ;;   Gauche を使って、バックプロパゲーションによる学習を行うプログラムです。
@@ -269,7 +269,7 @@
            (lambda (i ml)
              (if (= i 0)
                (middle-layer-backward ml (slot-ref ol 'grad-x))
-               (middle-layer-backward ml (slot-ref (vector-ref mls (- ml-num i)) 'grad-x))))
+               (middle-layer-backward ml (slot-ref (vector-ref mls-rev (- i 1)) 'grad-x))))
            mls-rev)
           ;; 重みとバイアスの更新
           (for-each (lambda (ml) (middle-layer-update ml eta)) mls)
